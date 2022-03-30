@@ -1,6 +1,7 @@
 import os
 import music21 as m21
 import transposer as tr
+from song import Song
 
 class Preprocessor:
     """_summary_
@@ -31,11 +32,21 @@ class Preprocessor:
                     if extension in self.supportedFormats:
                         song = m21.converter.parse(os.path.join(path, file))
                         songs.append(song)
-        m21.converter.subConverters.SubConverter.show(obj=songs[0], fmt="abc")
         return songs
 
 
-    def encode_song(song, time_step=0.25):
+    def expand_chords(self, song):
+        song = m21.harmony.realizeChordSymbolDurations(song)
+        #song.show('text')
+        return song
+
+    def preprocess_song(self, song):
+        song = self.tr.transpose(song)
+        song = self.expand_chords(song)
+        return song
+
+
+    def encode_song(self, song, time_step=0.25):
         """Converts a score into a time-series-like music representation. Each item in the encoded list represents 'min_duration'
         quarter lengths. The symbols used at each step are: integers for MIDI notes, 'r' for representing a rest, and '_'
         for representing notes/rests that are carried over into a new time step. Here's a sample encoding:
@@ -47,40 +58,36 @@ class Preprocessor:
         :return:
         """
 
-        encoded_song = []
+        encoded_song = Song()
 
+        nChord = 0
         for event in song.flat.notesAndRests:
-
+            duration = int(event.duration.quarterLength / time_step)
+            print("Event: ", event)
+            print("Duration: ", duration)
             # handle notes
             if isinstance(event, m21.note.Note):
                 symbol = event.pitch.midi  # 60
+                encoded_song.add_note(symbol, duration)
             # handle rests
             elif isinstance(event, m21.note.Rest):
                 symbol = "r"
+                encoded_song.add_note(symbol, duration)
+            elif isinstance(event, m21.harmony.ChordSymbol):
+                symbol = m21.harmony.chordSymbolFigureFromChord(event)
+                encoded_song.add_chord(symbol, duration)
+                nChord += 1
+            else:
+                print(event)
 
-            # convert the note/rest into time series notation
-            steps = int(event.duration.quarterLength / time_step)
-            for step in range(steps):
-
-                # if it's the first time we see a note/rest, let's encode it. Otherwise, it means we're carrying the same
-                # symbol in a new time step
-                if step == 0:
-                    encoded_song.append(symbol)
-                else:
-                    encoded_song.append("_")
-
-        # cast encoded song to str
-        encoded_song = " ".join(map(str, encoded_song))
-
+        print(nChord)
         return encoded_song
-
 
     def preprocess(self):
         print("Loading songs...")
         songs = self.load_songs()
         for i, song in enumerate(songs):
-            print(i)
-            songs[i] = self.tr.transpose(song)
+            songs[i] = self.preprocess_song(song)
         return songs
         
 
@@ -88,7 +95,8 @@ class Preprocessor:
 if __name__ == "__main__":
     pre = Preprocessor(["../../dataset"])
     songs = pre.preprocess()
-    print("Len:")
-    len(songs)
     for song in songs:
-        song.show()
+        song = pre.encode_song(song)
+        print("Chords: ",len(song._chords))
+        print("Melody: ",len(song._melody))
+        song.write()
