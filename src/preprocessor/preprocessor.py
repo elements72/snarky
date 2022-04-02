@@ -7,10 +7,11 @@ class Preprocessor:
     """_summary_
     Preprocess data 
     """
-    def __init__(self, datasets_paths) -> None:
+    def __init__(self, datasets_paths, save_path="./dataset") -> None:
         self.datasets_paths = datasets_paths
         self.supportedFormats = [".mid", ".krn", ".mxl"]
         self.tr = tr.Transposer()
+        self.savePath = save_path
 
     def load_songs(self):
         """Loads all kern pieces in dataset using music21.
@@ -30,7 +31,10 @@ class Preprocessor:
                     # consider only kern files
                     extension = os.path.splitext(file)[1]
                     if extension in self.supportedFormats:
-                        song = m21.converter.parse(os.path.join(path, file))
+                        try:
+                            song = m21.converter.parse(os.path.join(path, file))
+                        except:
+                            print("Error: cannot parse ", file)
                         songs.append(song)
         return songs
 
@@ -44,6 +48,12 @@ class Preprocessor:
         song = self.tr.transpose(song)
         song = self.expand_chords(song)
         return song
+
+    def save_dataset(self, songs):
+        with open(self.savePath, "w") as fp:
+            for song in songs:
+                song.write(fp)
+                fp.write("\n")
 
 
     def encode_song(self, song, time_step=0.25):
@@ -60,7 +70,6 @@ class Preprocessor:
 
         encoded_song = Song()
 
-        nChord = 0
         for event in song.flat.notesAndRests:
             duration = int(event.duration.quarterLength / time_step)
             print("Event: ", event)
@@ -76,27 +85,19 @@ class Preprocessor:
             elif isinstance(event, m21.harmony.ChordSymbol):
                 symbol = m21.harmony.chordSymbolFigureFromChord(event)
                 encoded_song.add_chord(symbol, duration)
-                nChord += 1
-            else:
-                print(event)
-
-        print(nChord)
         return encoded_song
 
     def preprocess(self):
         print("Loading songs...")
         songs = self.load_songs()
         for i, song in enumerate(songs):
-            songs[i] = self.preprocess_song(song)
+            song = self.preprocess_song(song)
+            songs[i] = self.encode_song(song)
+        self.save_dataset(songs)
         return songs
         
 
 
 if __name__ == "__main__":
-    pre = Preprocessor(["../../dataset"])
+    pre = Preprocessor(["../../../datasets/Wikifonia"])
     songs = pre.preprocess()
-    for song in songs:
-        song = pre.encode_song(song)
-        print("Chords: ",len(song._chords))
-        print("Melody: ",len(song._melody))
-        song.write()

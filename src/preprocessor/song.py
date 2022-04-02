@@ -26,10 +26,7 @@ class Song:
     def add_chord(self, chord, duration):
         self.add_symbol(self._chords, chord, duration)
 
-    def write(self, path="./dataset"):
-        with open(path, "a+") as fp:
-            fp.write(self.get_chords())
-            fp.write("\n")
-            fp.write(self.get_melody())
-            fp.write("\n")
-
+    def write(self, fp):
+        fp.write(self.get_chords())
+        fp.write("\n")
+        fp.write(self.get_melody())
