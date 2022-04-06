@@ -3,13 +3,15 @@ import music21 as m21
 import transposer as tr
 from song import Song
 import argparse
+import multiprocessing
+from scanner import Scanner
 
 class Preprocessor:
     """_summary_
     Preprocess data 
     """
-    def __init__(self, datasets_paths, save_path="./dataset") -> None:
-        self.datasets_paths = datasets_paths
+    def __init__(self, dataset_path, save_path="./dataset") -> None:
+        self.dataset_path = dataset_path
         self.supportedFormats = [".mid", ".krn", ".mxl"]
         self.tr = tr.Transposer()
         self.savePath = save_path
@@ -25,21 +27,19 @@ class Preprocessor:
         count = 1
 
         # go through all the files in dataset and load them with music21
-        for dataset_path in self.datasets_paths:
-            print(dataset_path)
-            for path, subdirs, files in os.walk(dataset_path):
-                print(path, subdirs, files)
-                for file in files:
-                    print(f"""Processing: {file} song number: {count}""")
-                    count += 1
-                    # consider only kern files
-                    extension = os.path.splitext(file)[1]
-                    if extension in self.supportedFormats:
-                        try:
-                            song = m21.converter.parse(os.path.join(path, file))
-                        except:
-                            print("Error: cannot parse ", file)
-                        songs.append(song)
+        for path, subdirs, files in os.walk(self.dataset_path):
+            print(path, subdirs, files)
+            for file in files:
+                print(f"""Processing: {file} song number: {count}""")
+                count += 1
+                # consider only kern files
+                extension = os.path.splitext(file)[1]
+                if extension in self.supportedFormats:
+                    try:
+                        song = m21.converter.parse(os.path.join(path, file))
+                    except:
+                        print("Error: cannot parse ", file)
+                    songs.append(song)
         return songs
 
 
@@ -83,8 +83,6 @@ class Preprocessor:
 
         for event in song.flat.notesAndRests:
             duration = int(event.duration.quarterLength / time_step)
-            print("Event: ", event)
-            print("Duration: ", duration)
             # handle notes
             if isinstance(event, m21.note.Note):
                 symbol = event.pitch.midi  # 60
@@ -100,6 +98,19 @@ class Preprocessor:
                 encoded_song.add_chord(symbol, duration)
         return encoded_song
 
+    def preprocess_single(self, file, prev_results, count):
+        print(f"Process {os.getpid()} processing file number: {count} called: {file} ")
+        extension = os.path.splitext(file)[1]
+        if extension in self.supportedFormats:
+            try:
+                song = m21.converter.parse(os.path.join(self.dataset_path, file))
+                song = self.preprocess_song(song)
+                song = self.encode_song(song)
+                prev_results.append(song)
+            except:
+                print("Error: cannot parse ", file)
+        return prev_results
+
     def preprocess(self):
         print("Loading songs...")
         songs = self.load_songs()
@@ -112,10 +123,11 @@ class Preprocessor:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process songs dataset.')
-    parser.add_argument('path', metavar='path', type=str, nargs='+',
+    parser.add_argument('path', metavar='path', type=str,
                         help='the path of the dataset')
     args = parser.parse_args()
     print(args.path)
     pre = Preprocessor(args.path)
+    scanner = Scanner(args.path)
+    pre.save_dataset(scanner.scan_multi(pre.preprocess_single))
     # songs = pre.preprocess()
-    print(pre.count_chords(pre.load_songs()))
