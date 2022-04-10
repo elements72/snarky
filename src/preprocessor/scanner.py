@@ -15,7 +15,7 @@ class Scanner:
         manager = multiprocessing.Manager()
         queue = manager.Queue()
 
-        count = 0
+        count = 1
         for directory in self.get_dirs():
             queue.put((directory, count))
             count = count + 1
@@ -30,7 +30,7 @@ class Scanner:
         print(
             f"""Starting database scan of {self._dataset_path}""")
 
-        results = worker(analysis_function, queue, self._dataset_path, self._results)
+        results = worker(analysis_function, queue)
 
         return results
 
@@ -42,7 +42,7 @@ class Scanner:
         print(
             f"""Starting database scan of {self._dataset_path}, started {num_workers} processes""")
 
-        workers = [pool.apply_async(worker, (analysis_function, queue, self._dataset_path))
+        workers = [pool.apply_async(worker, (analysis_function, queue))
                    for _ in range(num_workers)]
         results = []
         for w in workers:
@@ -56,9 +56,9 @@ class Scanner:
         return results
 
 
-def worker(analysis_function: Callable[..., any], queue: multiprocessing.Queue, database_path: str) -> any:
+def worker(analysis_function: Callable[..., any], queue: multiprocessing.Queue) -> any:
     results = []
     for (file, count) in iter(queue.get, None):
-        result = analysis_function(file=file, prev_results=results, count=count)
+        result = analysis_function(file, results, count)
         results = result
     return results
