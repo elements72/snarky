@@ -16,7 +16,7 @@ class Snarky:
 
     def __post_init__(self):
         self._buffer_size = self._batch_size - self._sequence_length
-        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(batch_size, drop_remainder=True).cache()
+        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True).cache()
                           .prefetch(tf.data.experimental.AUTOTUNE))
 
     def net(self, lr=0.005):

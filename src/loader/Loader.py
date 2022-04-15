@@ -2,7 +2,7 @@ import os.path
 from dataclasses import dataclass, field
 import argparse
 from chronometer import Chronometer
-from Vocabulary import Vocab
+from .Vocabulary import Vocab
 import json
 import tensorflow as tf
 import numpy as np
