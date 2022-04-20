@@ -51,6 +51,25 @@ class Snarky:
     def evaluate(self):
         return self.model.evaluate(self._sequence, return_dict=True)
 
+    def predict_next_note(self, notes, temperature: float = 1.0):
+        assert temperature > 0
+
+        inputs = tf.expand_dims(notes, 0)
+        predictions = self.model.predict(inputs)
+        pitch_logits = predictions['melody']
+        chord = predictions['chord']
+        chord_play = predictions['chord_play']
+        melody_play = predictions['melody_play']
+
+        pitch_logits /= temperature
+        pitch = tf.random.categorical(pitch_logits, num_samples=1)
+        pitch = tf.squeeze(pitch, axis=-1)
+        melody_play = tf.squeeze(melody_play, axis=-1)
+        chord_play = tf.squeeze(chord_play, axis=-1)
+
+        return int(pitch), int(chord), int(melody_play), int(chord_play)
+
+
 
 
 if __name__ == "__main__":
@@ -58,8 +77,12 @@ if __name__ == "__main__":
         parser = argparse.ArgumentParser(description='Process songs dataset.')
         parser.add_argument('path', metavar='path', type=str,
                             help='the path of the dataset')
+        parser.add_argument('-t', metavar='temperature', type=float, help='temperature value', required=False)
+       # parser.add_argument('-source', metavar='source', type=str, help='source melody', required=True)
         args = parser.parse_args()
         path = args.path
+        # source_melody = path.source
+
         loader = Loader(path)
         dataset = loader.load()
 
@@ -70,5 +93,6 @@ if __name__ == "__main__":
         params = loader.get_params()
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         snarky.create_model()
-        print(snarky.evaluate())
+        snarky.predict_next_note(sequence[0])
+
         # snarky.train(net)
