@@ -10,9 +10,9 @@ import numpy as np
 @dataclass
 class Loader:
     path: str = "../dataset/"
-    _params: list[str] = field(default_factory=lambda: ["chords", "chords_play", "melody", "melody_play"])
+    _params: list = field(default_factory=lambda: ["chords", "chords_play", "melody", "melody_play"])
     _dataset: dict = field(init=False)
-    _vocabulary: dict[str: Vocab] = field(init=False)
+    _vocabulary: dict = field(init=False)
     _mapping_path: str = "mapping"
 
     def __post_init__(self):
