@@ -99,6 +99,11 @@ class Loader:
             with open(f"{self._mapping_path}_{key}", "w") as fp:
                 json.dump(self._vocabulary[key].token_to_idx, fp, indent=4)
 
+    def save_song(self, song, path="./generated"):
+        with open(path, "w") as fp:
+            for i, param in enumerate(self._params):
+                fp.write(" ".join(map(lambda x: str(self._vocabulary[param].to_tokens(x)), song[:, i])))
+                fp.write("\n")
 
     def load(self) -> tf.data.Dataset:
         self.load_dataset()

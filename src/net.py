@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from loader import Loader
 import argparse
 from chronometer import Chronometer
+import numpy as np
+
 
 
 @dataclass
@@ -34,7 +36,7 @@ class Snarky:
 
         model.compile(loss=loss, optimizer=optimizer)
 
-        model.summary()
+        # model.summary()
 
         self.model = model
 
@@ -56,18 +58,35 @@ class Snarky:
 
         inputs = tf.expand_dims(notes, 0)
         predictions = self.model.predict(inputs)
-        pitch_logits = predictions['melody']
-        chord = predictions['chord']
-        chord_play = predictions['chord_play']
-        melody_play = predictions['melody_play']
+        melody_logits = predictions['melody']
+        chords_logits = predictions['chords']
+        chord_play_logits = predictions['chords_play']
+        melody_play_logits = predictions['melody_play']
 
-        pitch_logits /= temperature
-        pitch = tf.random.categorical(pitch_logits, num_samples=1)
-        pitch = tf.squeeze(pitch, axis=-1)
+        melody_logits /= temperature
+        melody = tf.random.categorical(melody_logits, num_samples=1)
+        melody = tf.squeeze(melody, axis=-1)
+
+        chords_logits /= temperature
+        chord = tf.random.categorical(chords_logits, num_samples=1)
+        chord = tf.squeeze(chord, axis=-1)
+
+        melody_play = tf.random.categorical(melody_play_logits, num_samples=1)
         melody_play = tf.squeeze(melody_play, axis=-1)
+        chord_play = tf.random.categorical(chord_play_logits, num_samples=1)
         chord_play = tf.squeeze(chord_play, axis=-1)
 
-        return int(pitch), int(chord), int(melody_play), int(chord_play)
+        return int(chord), int(chord_play), int(melody), int(melody_play)
+
+    def generate(self, inputs, temperature: float = 0.1, num_predictions: int = 125):
+        generated_notes = []
+        for _ in range(num_predictions):
+            chord, chord_play, note, note_play = self.predict_next_note(inputs, temperature)
+            generated = (chord, chord_play, note, note_play)
+            generated_notes.append(generated)
+            inputs = np.delete(inputs, 0, axis=0)
+            inputs = np.append(inputs, np.expand_dims(generated, 0), axis=0)
+        return np.array(generated_notes)
 
 
 
@@ -78,22 +97,27 @@ if __name__ == "__main__":
         parser.add_argument('path', metavar='path', type=str,
                             help='the path of the dataset')
         parser.add_argument('-t', metavar='temperature', type=float, help='temperature value', required=False)
-       # parser.add_argument('-source', metavar='source', type=str, help='source melody', required=True)
+        parser.add_argument('-predictions', metavar='temperature', type=int, help='temperature value', required=False)
+        parser.add_argument('-source', metavar='source', type=str, help='source melody', required=False)
         args = parser.parse_args()
         path = args.path
-        # source_melody = path.source
+        source_melody = args.source
+        print(source_melody)
 
         loader = Loader(path)
         dataset = loader.load()
 
         batch_size = 64
         sequence_length = 25
+        num_predictions = args.predictions if args.predictions else 125
 
         sequence = loader.create_sequences(dataset, sequence_length)
         params = loader.get_params()
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         snarky.create_model()
         for seq, _ in sequence.take(1):
-            snarky.predict_next_note(seq[0])
+            generated = snarky.generate(seq)
+            loader.save_song(generated)
+
 
         # snarky.train(net)
