@@ -93,6 +93,7 @@ if __name__ == "__main__":
         params = loader.get_params()
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         snarky.create_model()
-        snarky.predict_next_note(sequence[0])
+        for seq, _ in sequence.take(1):
+            snarky.predict_next_note(seq[0])
 
         # snarky.train(net)
