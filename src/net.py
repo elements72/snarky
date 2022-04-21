@@ -1,8 +1,5 @@
 import tensorflow as tf
 from dataclasses import dataclass, field
-from loader import Loader
-import argparse
-from chronometer import Chronometer
 import numpy as np
 
 
@@ -87,37 +84,3 @@ class Snarky:
             inputs = np.delete(inputs, 0, axis=0)
             inputs = np.append(inputs, np.expand_dims(generated, 0), axis=0)
         return np.array(generated_notes)
-
-
-
-
-if __name__ == "__main__":
-    with Chronometer() as t:
-        parser = argparse.ArgumentParser(description='Process songs dataset.')
-        parser.add_argument('path', metavar='path', type=str,
-                            help='the path of the dataset')
-        parser.add_argument('-t', metavar='temperature', type=float, help='temperature value', required=False)
-        parser.add_argument('-predictions', metavar='temperature', type=int, help='temperature value', required=False)
-        parser.add_argument('-source', metavar='source', type=str, help='source melody', required=False)
-        args = parser.parse_args()
-        path = args.path
-        source_melody = args.source
-        print(source_melody)
-
-        loader = Loader(path)
-        dataset = loader.load()
-
-        batch_size = 64
-        sequence_length = 25
-        num_predictions = args.predictions if args.predictions else 125
-
-        sequence = loader.create_sequences(dataset, sequence_length)
-        params = loader.get_params()
-        snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-        snarky.create_model()
-        for seq, _ in sequence.take(1):
-            generated = snarky.generate(seq)
-            loader.save_song(generated)
-
-
-        # snarky.train(net)

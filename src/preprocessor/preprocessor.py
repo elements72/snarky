@@ -1,11 +1,11 @@
 import fractions
 import os
 import music21 as m21
-import transposer as tr
-from song import Song
+from .transposer import Transposer
+from .song import Song
 import argparse
 from chronometer import Chronometer
-from scanner import Scanner
+from .scanner import Scanner
 
 class Preprocessor:
     """_summary_
@@ -14,12 +14,12 @@ class Preprocessor:
     def __init__(self, dataset_path, save_path="./dataset") -> None:
         self.dataset_path = dataset_path
         self.supportedFormats = [".mid", ".krn", ".mxl"]
-        self.tr = tr.Transposer()
+        self.tr = Transposer()
         self.savePath = save_path
         self._noChordSymbol = "NC"
 
     def load_songs(self):
-        """Loads all kern pieces in dataset using music21.
+        """Loads all pieces in dataset using music21.
 
         :param dataset_path (str): Path to dataset
         :return songs (list of m21 streams): List containing all pieces
@@ -81,7 +81,7 @@ class Preprocessor:
 
             ["r", "_", "60", "_", "_", "_", "72" "_"]
 
-        :param song (m21 stream): Piece to encode
+        :param song (m21.stream): Piece to encode
         :param time_step (float): Duration of each time step in quarter length
         :return:
         """
@@ -116,25 +116,25 @@ class Preprocessor:
 
     def preprocess_single(self, file, songs, count):
         print(f"Process {os.getpid()} processing file number: {count} called: {file} ")
-        extension = os.path.splitext(file)[1]
-        if extension in self.supportedFormats:
-            try:
-                song = m21.converter.parse(os.path.join(self.dataset_path, file))
-                song = self.preprocess_song(song)
-                song = self.encode_song(song)
-                songs.append(song)
-            except:
-                print("Error: cannot parse ", file)
+        song = self.preprocess(os.path.join(self.dataset_path, file))
+        if song is not None:
+            songs.append(song)
         return songs
 
-    def preprocess(self):
-        print("Loading songs...")
-        songs = self.load_songs()
-        for i, song in enumerate(songs):
-            song = self.preprocess_song(song)
-            songs[i] = self.encode_song(song)
-        self.save_dataset(songs)
-        return songs
+    def preprocess(self, path) -> Song:
+        """Preprocess a single song"""
+        extension = os.path.splitext(path)[1]
+        song = None
+        if extension in self.supportedFormats:
+            try:
+                song = m21.converter.parse(path)
+                song = self.preprocess_song(song)
+                song = self.encode_song(song)
+            except:
+                print("Error: cannot parse ", path)
+                song = None
+        return song
+
 
 
 if __name__ == "__main__":

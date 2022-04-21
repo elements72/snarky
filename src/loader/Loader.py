@@ -43,23 +43,19 @@ class Loader:
                 processed_song += 1
         print("Processed songs: ", processed_song)
 
-    # unused
-    def load_chord_mapping(self):
-        mappings = {}
-        if os.path.isfile(self._chord_mapping_path):
-            with open(self._chord_mapping_path, "r") as fp:
-                mappings = json.load(fp)
-        else:
-            vocabulary = list(set(self._dataset["chords"]))
-            for i, chord in enumerate(vocabulary):
-                mappings[chord] = i
-            with open(self._chord_mapping_path, "w") as fp:
-                json.dump(mappings, fp, indent=4)
-        return mappings
-
     def create_vocabulary(self) -> None:
         for key in self._dataset:
             self._vocabulary[key] = Vocab(self._dataset[key])
+
+    def encode_song(self, song: dict) -> np.array:
+        """
+        Encode a single song
+        :param song: Song to be encoded in a dict format
+        :type song: dict[str:]
+        :return: encoded song array
+        """
+
+        return tf.stack([self._vocabulary[key][song[key]] for key in song], axis=1)
 
     def create_dataset(self) -> tf.data.Dataset:
         train_dataset = np.stack([self._vocabulary[key][self._dataset[key]] for key in self._dataset], axis=1)
@@ -86,13 +82,6 @@ class Loader:
             return inputs, labels
 
         return sequences.map(split_labels, num_parallel_calls=tf.data.AUTOTUNE)
-
-    def one_hot_encoding(self, value: str):
-        print("In one hot: ", value)
-        #value = vocab[value]
-        #encoded = tf.one_hot(value, len(vocab))
-        #print(encoded)
-        return value
 
     def print_vocabulary(self):
         for key in self._params:
