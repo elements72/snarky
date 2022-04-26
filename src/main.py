@@ -1,6 +1,6 @@
 from net import Snarky
 from loader import Loader
-from preprocessor import Preprocessor, Song
+from preprocessor import Preprocessor
 import argparse
 from chronometer import Chronometer
 
@@ -13,6 +13,8 @@ def initialize_arguments():
     parser.add_argument('-predictions', metavar='temperature', type=int, help='temperature value', required=False)
     parser.add_argument('-source', metavar='source', type=str, help='source melody', required=False)
     parser.add_argument('-dest', metavar='dest', type=str, help='destination melody', required=False)
+    parser.add_argument('-weights', metavar='params', type=str, help='params of the net', required=False)
+    parser.add_argument('-weights_save', metavar='params', type=str, help='params of the net', required=False)
 
     return parser.parse_args()
 
@@ -27,6 +29,8 @@ if __name__ == "__main__":
         sequence_length = 25
         num_predictions = args.predictions if args.predictions else 125
         dest_path = args.dest if args.dest else "./generated"
+        weights = args.weights if args.weights else None
+        weights_save = args.weights_save if args.weights_save else None
 
         # Load the dataset and create the sequence
         loader = Loader(path)
@@ -43,6 +47,15 @@ if __name__ == "__main__":
         song = pre.preprocess(source_melody)
         encoded_song = loader.encode_song(song.get_song())
 
+        if weights is not None:
+            snarky.load(weights)
+
+        snarky.train()
+
+        if weights_save is not None:
+            snarky.save(weights_save)
         generated = snarky.generate(encoded_song[:sequence_length], num_predictions=384)
 
         loader.save_song(generated, dest_path)
+
+

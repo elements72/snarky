@@ -75,6 +75,23 @@ class Snarky:
 
         return int(chord), int(chord_play), int(melody), int(melody_play)
 
+    def save(self, path="model.params") -> None:
+        """
+        Save the net parameters
+        :return:
+        :rtype:
+        """
+
+        self.model.save_weights(path)
+
+    def load(self, path="model.params"):
+        """
+        Load the net parameters
+        :return:
+        :rtype:
+        """
+        self.model.load_weights(path)
+
     def generate(self, inputs, temperature: float = 0.1, num_predictions: int = 125):
         generated_notes = []
         for _ in range(num_predictions):
