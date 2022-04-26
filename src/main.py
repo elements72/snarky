@@ -50,7 +50,7 @@ if __name__ == "__main__":
         if weights is not None:
             snarky.load(weights)
 
-        snarky.train()
+        # snarky.train()
 
         if weights_save is not None:
             snarky.save(weights_save)

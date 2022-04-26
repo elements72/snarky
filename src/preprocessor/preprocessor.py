@@ -153,4 +153,4 @@ if __name__ == "__main__":
         print("Processed songs: ", str(len(songs)))
         print("Saving dataset...")
         pre.save_dataset(songs, pretty=args.pretty)
-    print('Total time of elabation: {:.3f} seconds'.format(float(t)))
+    print('Total time of elaboration: {:.3f} seconds'.format(float(t)))

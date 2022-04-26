@@ -8,7 +8,7 @@ class Scanner:
         self._dirs = self.get_dirs()
         self._results = []
 
-    def get_dirs(self) -> list[str]:
+    def get_dirs(self) -> list:
         return sorted(os.listdir(self._dataset_path))
 
     def get_dirs_queue(self, num_workers: int) -> multiprocessing.Queue:
