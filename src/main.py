@@ -38,6 +38,11 @@ if __name__ == "__main__":
         sequence = loader.create_sequences(dataset, sequence_length)
         params = loader.get_params()
 
+        loader1 = Loader(path="../../datasets/dataMD")
+        dataset1 = loader.load()
+        sequence1 = loader.create_sequences(dataset1, sequence_length)
+        params1 = loader.get_params()
+
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         snarky.create_model()
@@ -50,11 +55,25 @@ if __name__ == "__main__":
         if weights is not None:
             snarky.load(weights)
 
-        # snarky.train()
+        snarky.train(epochs=1)
 
         if weights_save is not None:
             snarky.save(weights_save)
-        generated = snarky.generate(encoded_song[:sequence_length], num_predictions=384)
+
+
+        for seq, target in sequence1.take(10):
+            generated = snarky.generate(seq, num_predictions=1)
+            y = []
+            for x in target:
+                y.append(target[x].numpy())
+            print(f"Target: {y}, output{generated}")
+        print("---------------")
+        for seq, target in sequence.take(10):
+            generated = snarky.generate(seq, num_predictions=1)
+            y = []
+            for x in target:
+                y.append(target[x].numpy())
+            print(f"Target: {y}, output{generated}")
 
         loader.save_song(generated, dest_path)
 

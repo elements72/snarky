@@ -89,7 +89,8 @@ class Preprocessor:
         encoded_song = Song(song.metadata.title)
 
         for event in song.flat.notesAndRests:
-            if isinstance(event.duration.quarterLength, fractions.Fraction):
+            if isinstance(event.duration.quarterLength, fractions.Fraction) or\
+                    event.duration.quarterLength % time_step != 0:
                 print(f"Skipping: {encoded_song.get_title()} for not supported metric")
                 raise Exception('Unsupported metric')
             duration = int(event.duration.quarterLength / time_step)

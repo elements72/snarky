@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 import numpy as np
 
 
-
 @dataclass
 class Snarky:
     _sequence: tf.data.Dataset
@@ -28,13 +27,13 @@ class Snarky:
         model = tf.keras.Model(inputs, outputs)
 
         loss = {key: tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True) for key in self._params}
+        metrics = {key: tf.keras.metrics.SparseCategoricalAccuracy() for key in self._params}
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
-        model.compile(loss=loss, optimizer=optimizer)
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
-        # model.summary()
-
+        model.summary()
         self.model = model
 
         return self.model
@@ -55,6 +54,7 @@ class Snarky:
 
         inputs = tf.expand_dims(notes, 0)
         predictions = self.model.predict(inputs)
+
         melody_logits = predictions['melody']
         chords_logits = predictions['chords']
         chord_play_logits = predictions['chords_play']
@@ -62,10 +62,15 @@ class Snarky:
 
         melody_logits /= temperature
         melody = tf.random.categorical(melody_logits, num_samples=1)
+        #melody = tf.argmax(melody_logits)
         melody = tf.squeeze(melody, axis=-1)
 
         chords_logits /= temperature
+        #print(chords_logits.shape)
         chord = tf.random.categorical(chords_logits, num_samples=1)
+        #print(chord.shape)
+        chord = tf.argmax(chords_logits, axis=-1)
+        #print(chord)
         chord = tf.squeeze(chord, axis=-1)
 
         melody_play = tf.random.categorical(melody_play_logits, num_samples=1)
@@ -78,8 +83,6 @@ class Snarky:
     def save(self, path="model.params") -> None:
         """
         Save the net parameters
-        :return:
-        :rtype:
         """
 
         self.model.save_weights(path)
@@ -92,11 +95,14 @@ class Snarky:
         """
         self.model.load_weights(path)
 
-    def generate(self, inputs, temperature: float = 0.1, num_predictions: int = 125):
+    def generate(self, inputs, temperature: float = 1, num_predictions: int = 125):
         generated_notes = []
-        for _ in range(num_predictions):
+        #song = inputs
+        #inputs = inputs[:25]
+        for i in range(num_predictions):
             chord, chord_play, note, note_play = self.predict_next_note(inputs, temperature)
             generated = (chord, chord_play, note, note_play)
+            #print(f"Output atteso: {expected]}, output: {generated}")
             generated_notes.append(generated)
             inputs = np.delete(inputs, 0, axis=0)
             inputs = np.append(inputs, np.expand_dims(generated, 0), axis=0)

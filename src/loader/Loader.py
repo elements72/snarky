@@ -9,7 +9,7 @@ import numpy as np
 
 @dataclass
 class Loader:
-    path: str = "../dataset/"
+    path: str = "../dataset/dataMD"
     _params: list = field(default_factory=lambda: ["chords", "chords_play", "melody", "melody_play"])
     _dataset: dict = field(init=False)
     _vocabulary: dict = field(init=False)
@@ -24,6 +24,7 @@ class Loader:
             self._dataset[key].extend(data[key].split(" "))
 
     def load_dataset(self):
+        print(self.path)
         processed_song = 0
         data = {}
         params_number = len(self._params)
