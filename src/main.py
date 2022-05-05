@@ -39,10 +39,10 @@ if __name__ == "__main__":
         # Load the dataset and create the sequence
         loader = Loader(os.path.join(path, "train"))
         dataset = loader.load()
-        sequence = loader.create_sequences(dataset, sequence_length)
+        sequence = loader.create_sequences2(dataset, sequence_length)
         params = loader.get_params()
 
-        # Load the test dataset
+        """# Load the test dataset
         loader_test = Loader(os.path.join(path, "test"))
         dataset_test = loader_test.load()
         sequence_test = loader_test.create_sequences(dataset_test, sequence_length)
@@ -54,32 +54,32 @@ if __name__ == "__main__":
         dataset_single = loader_single.load(loader.get_vocabulary())
         sequence_single = loader_single.create_sequences(dataset_single, sequence_length)
         params_single = loader_single.get_params()
-
+        """
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-        snarky.create_model()
+        snarky.create_model2()
 
         # Load a song for generation input
-        pre = Preprocessor("./")
+        """pre = Preprocessor("./")
         song = pre.preprocess(source_melody)
         encoded_song = loader_single.encode_song(song.get_song())
-
-        if weights is not None:
-            snarky.load(weights)
+"""
+        #if weights is not None:
+        #    snarky.load(weights)
 
         # print(sequence.element_spec)
         # print(sequence_test.element_spec)
-        # snarky.train(epochs=1)
+        snarky.train(epochs=1)
 
         #snarky.evaluate(sequence.batch(batch_size))
 
-        if weights_save is not None:
-            snarky.save(weights_save)
+        #if weights_save is not None:
+        #    snarky.save(weights_save)
 
 
 
         n = 1000
-        correct = {"chords": 0, "chords_play": 0, "melody": 0, "melody_play": 0}
+        correct = {"chords": 0, "chords_play": 0, "melody": 0, "m elody_play": 0}
         for seq, target in sequence_single.take(n):
            # print("Input seq:", seq)
             generated = snarky.generate(seq, num_predictions=1)

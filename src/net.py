@@ -18,7 +18,34 @@ class Snarky:
         self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True).cache()
                           .prefetch(tf.data.experimental.AUTOTUNE))
 
-    def create_model(self, lr=0.005):
+    def create_model2(self, lr=0.001):
+        input_shape = (self._sequence_length, len(self._params))
+
+        input_chord = tf.keras.Input((self._sequence_length, self._params["chords"]))
+        input_chord_play = tf.keras.Input((self._sequence_length, self._params["chords_play"]))
+        input_melody = tf.keras.Input((self._sequence_length, self._params["melody"]))
+        input_melody_play = tf.keras.Input((self._sequence_length, self._params["melody_play"]))
+
+        inputs = tf.keras.layers.Concatenate(axis=-1)([input_chord, input_chord_play, input_melody, input_melody_play])
+
+        x = tf.keras.layers.LSTM(128)(inputs)
+
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key)(x) for key in self._params}
+
+        model = tf.keras.Model([input_chord, input_chord_play, input_melody, input_melody_play], outputs)
+
+        loss = {key: tf.keras.losses.CategoricalCrossentropy(from_logits=True) for key in self._params}
+        metrics = {key: tf.keras.metrics.CategoricalAccuracy() for key in self._params}
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+
+        model.summary()
+        self.model = model
+
+        return self.model
+    def create_model(self, lr=0.001):
         input_shape = (self._sequence_length, len(self._params))
         inputs = tf.keras.Input(input_shape)
         x = tf.keras.layers.LSTM(128)(inputs)

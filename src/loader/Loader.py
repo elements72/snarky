@@ -58,10 +58,55 @@ class Loader:
 
         return tf.stack([self._vocabulary[key][song[key]] for key in song], axis=1)
 
+    def create_datasets(self) -> list:
+        train_datasets = [self._vocabulary[key][self._dataset[key]] for key in self._dataset]
+        train_datasets[0] = tf.keras.utils.to_categorical(train_datasets[0], num_classes=len(self._vocabulary["chords"]))
+        train_datasets[1] = tf.keras.utils.to_categorical(train_datasets[1], num_classes=len(self._vocabulary["chords_play"]))
+        train_datasets[2] = tf.keras.utils.to_categorical(train_datasets[2], num_classes=len(self._vocabulary["melody"]))
+        train_datasets[3] = tf.keras.utils.to_categorical(train_datasets[3], num_classes=len(self._vocabulary["melody_play"]))
+        train_datasets = [tf.data.Dataset.from_tensor_slices(dataset) for dataset in train_datasets]
+        return train_datasets
+
     def create_dataset(self) -> tf.data.Dataset:
         train_dataset = np.stack([self._vocabulary[key][self._dataset[key]] for key in self._dataset], axis=1)
+        print(train_dataset.shape)
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         return train_dataset
+
+    def create_sequences2(self, datasets: list, seq_length: int) -> tf.data.Dataset:
+        """Returns TF Dataset of sequence and label examples."""
+        seq_length = seq_length + 1
+
+        # Take 1 extra for the labels
+        windows = [dataset.window(seq_length, shift=1, stride=1,
+                                 drop_remainder=True) for dataset in datasets]
+
+        # `flat_map` flattens the" dataset of datasets" into a dataset of tensors
+        flatten = lambda x: x.batch(seq_length, drop_remainder=True)
+        sequences = [window.flat_map(flatten) for window in windows]
+
+
+        # Split the labels
+        def split_label(sequences):
+            inputs = sequences[:-1]
+            label = sequences[-1]
+            # labels = {key: labels_dense[i] for i, key in enumerate(self._params)}
+            return inputs, label
+
+        def mapping(seq1, seq2, seq3, seq4):
+            print(seq1)
+            chords, chords_label = split_label(seq1)
+            chords_play, chords_play_label = split_label(seq2)
+            melody, melody_label = split_label(seq3)
+            melody_play, melody_play_label = split_label(seq4)
+
+            inputs = (chords, chords_play, melody, melody_play)
+            labels = (chords_label, chords_play_label, melody_label, melody_play_label)
+            labels = {key: labels[i] for i, key in enumerate(self._params)}
+
+            return inputs, labels
+        dataset = tf.data.Dataset.zip((sequences[0], sequences[1], sequences[2], sequences[3]))
+        return dataset.map(mapping)
 
     def create_sequences(self, dataset: tf.data.Dataset, seq_length: int) -> tf.data.Dataset:
         """Returns TF Dataset of sequence and label examples."""
@@ -74,6 +119,8 @@ class Loader:
         # `flat_map` flattens the" dataset of datasets" into a dataset of tensors
         flatten = lambda x: x.batch(seq_length, drop_remainder=True)
         sequences = windows.flat_map(flatten)
+
+
 
         # Split the labels
         def split_labels(sequences):
@@ -108,7 +155,7 @@ class Loader:
             self.create_vocabulary()
         else:
             self._vocabulary = vocab
-        return self.create_dataset()
+        return self.create_datasets()
 
     def get_vocabulary(self):
         return self._vocabulary
