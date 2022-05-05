@@ -87,7 +87,11 @@ class Loader:
     def print_vocabulary(self):
         for key in self._params:
             with open(f"{self._mapping_path}_{key}", "w") as fp:
-                json.dump(self._vocabulary[key].token_to_idx, fp, indent=4)
+                fp.write(f"\t{key}\tindex\tfreq\t%\n")
+                for idx, token in enumerate(self._vocabulary[key].token_to_idx):
+                    freq = self._vocabulary[key].token_freqs[idx][1]
+                    fp.write(f"\t'{token}':\t{idx}\t{freq}"
+                             f"\t{(freq/self._vocabulary[key].total)*100:.2f}\n")
 
     def save_song(self, song, path="./generated"):
         with open(path, "w") as fp:
@@ -95,10 +99,19 @@ class Loader:
                 fp.write(" ".join(map(lambda x: str(self._vocabulary[param].to_tokens(x)), song[:, i])))
                 fp.write("\n")
 
-    def load(self) -> tf.data.Dataset:
+    def set_vocabulary(self, vocab):
+        self._vocabulary = vocab
+
+    def load(self, vocab=None) -> tf.data.Dataset:
         self.load_dataset()
-        self.create_vocabulary()
+        if vocab is None:
+            self.create_vocabulary()
+        else:
+            self._vocabulary = vocab
         return self.create_dataset()
+
+    def get_vocabulary(self):
+        return self._vocabulary
 
     def get_params(self) -> dict:
         """

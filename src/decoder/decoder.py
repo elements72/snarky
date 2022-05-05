@@ -38,10 +38,10 @@ class Decoder:
 
         last_symbol = symbols[0]
         duration = 1
-        for symbol, rep in zip(symbols, symbols_play):
+        for symbol, rep in zip(symbols[1:], symbols_play[1:]):
             # print(chord)
             # if repetition symbol is one we got a new chord
-            if rep == "1":
+            if rep == "1" or last_symbol != symbol:
                 encoding_function(last_symbol, duration)
                 duration = 1
             else:

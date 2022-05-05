@@ -46,8 +46,8 @@ class Snarky:
 
         return history
 
-    def evaluate(self):
-        return self.model.evaluate(self._sequence, return_dict=True)
+    def evaluate(self, sequence: tf.data.Dataset):
+        return self.model.evaluate(x=sequence, return_dict=True)
 
     def predict_next_note(self, notes, temperature: float = 1.0):
         assert temperature > 0
@@ -61,8 +61,8 @@ class Snarky:
         melody_play_logits = predictions['melody_play']
 
         melody_logits /= temperature
-        melody = tf.random.categorical(melody_logits, num_samples=1)
-        #melody = tf.argmax(melody_logits)
+        #melody = tf.random.categorical(melody_logits, num_samples=1)
+        melody = tf.argmax(melody_logits, axis=-1)
         melody = tf.squeeze(melody, axis=-1)
 
         chords_logits /= temperature
@@ -100,6 +100,7 @@ class Snarky:
         #song = inputs
         #inputs = inputs[:25]
         for i in range(num_predictions):
+            # print("Inputs: ", inputs)
             chord, chord_play, note, note_play = self.predict_next_note(inputs, temperature)
             generated = (chord, chord_play, note, note_play)
             #print(f"Output atteso: {expected]}, output: {generated}")

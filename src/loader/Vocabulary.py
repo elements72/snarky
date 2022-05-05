@@ -10,6 +10,7 @@ class Vocab:  # @save
             reserved_tokens = []
         # Sort according to frequencies
         counter = count_corpus(tokens)
+        self.total = 0
         self._token_freqs = sorted(counter.items(), key=lambda x: x[1],
                                    reverse=True)
         # The index for the unknown token is 0
@@ -22,6 +23,7 @@ class Vocab:  # @save
             if token not in self.token_to_idx:
                 self.idx_to_token.append(token)
                 self.token_to_idx[token] = len(self.idx_to_token) - 1
+                self.total += freq
 
     def __len__(self):
         return len(self.idx_to_token)

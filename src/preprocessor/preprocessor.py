@@ -11,12 +11,13 @@ class Preprocessor:
     """_summary_
     Preprocess data 
     """
-    def __init__(self, dataset_path, save_path="./dataset") -> None:
+    def __init__(self, dataset_path, save_path="./dataset", time_step=0.125) -> None:
         self.dataset_path = dataset_path
         self.supportedFormats = [".mid", ".krn", ".mxl"]
         self.tr = Transposer()
         self.savePath = save_path
         self._noChordSymbol = "NC"
+        self._time_step = time_step
 
     def load_songs(self):
         """Loads all pieces in dataset using music21.
@@ -74,7 +75,7 @@ class Preprocessor:
                 count += 1
         return count
 
-    def encode_song(self, song, time_step=0.125):
+    def encode_song(self, song):
         """Converts a score into a time-series-like music representation. Each item in the encoded list represents 'min_duration'
         quarter lengths. The symbols used at each step are: integers for MIDI notes, 'r' for representing a rest, and '_'
         for representing notes/rests that are carried over into a new time step. Here's a sample encoding:
@@ -90,10 +91,10 @@ class Preprocessor:
 
         for event in song.flat.notesAndRests:
             if isinstance(event.duration.quarterLength, fractions.Fraction) or\
-                    event.duration.quarterLength % time_step != 0:
+                    event.duration.quarterLength % self._time_step != 0:
                 print(f"Skipping: {encoded_song.get_title()} for not supported metric")
                 raise Exception('Unsupported metric')
-            duration = int(event.duration.quarterLength / time_step)
+            duration = int(event.duration.quarterLength / self._time_step)
             # handle notes
             if isinstance(event, m21.note.Note):
                 symbol = event.pitch.midi  # 60
