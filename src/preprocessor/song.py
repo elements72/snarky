@@ -1,13 +1,11 @@
 
-
-
 class Song:
     def __init__(self, title, no_chord_symbol="NC") -> None:
         self._title = title
         self._melody: list[str] = []
         self._chords: list[str] = []
-        self._melody_holder: list[int] = []
-        self._chords_holder: list[int] = []
+        self._melody_holder: list[str] = []
+        self._chords_holder: list[str] = []
         self._noChordSymbol = no_chord_symbol
         self._songDuration = 0
 
@@ -26,6 +24,11 @@ class Song:
         self.pad_chords()
         return " ".join(map(str, self._chords))
 
+    def get_song(self, params=["chords", "chords_play", "melody", "melody_play"]):
+        self.pad_chords()
+        return {"chords": self._chords, "chords_play": self._chords_holder, "melody": self._melody,
+                "melody_play": self._melody_holder}
+
     def pad_chords(self):
         if len(self._chords) == 0:
             self.add_chord(self._noChordSymbol, self._songDuration, self._noChordSymbol)
@@ -36,11 +39,11 @@ class Song:
     def add_symbol(self, list, holder, symbol, duration, hold_symbol="_", append=True):
         if duration > 0:
             position = len(list) if append else 0
-            list.insert(position, symbol)
-            holder.insert(position, 1)
+            list.insert(position, str(symbol))
+            holder.insert(position, "1")
             for i in range(1, duration):
-                list.insert(position + i, hold_symbol)
-                holder.insert(position + i, 0)
+                list.insert(position + i, str(hold_symbol))
+                holder.insert(position + i, "0")
 
     def add_note(self, note, duration, hold_symbol="_"):
         self._songDuration += duration

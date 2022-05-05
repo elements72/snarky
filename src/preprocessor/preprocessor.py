@@ -1,25 +1,26 @@
 import fractions
 import os
 import music21 as m21
-import transposer as tr
-from song import Song
+from .transposer import Transposer
+from .song import Song
 import argparse
 from chronometer import Chronometer
-from scanner import Scanner
+from .scanner import Scanner
 
 class Preprocessor:
     """_summary_
     Preprocess data 
     """
-    def __init__(self, dataset_path, save_path="./dataset") -> None:
+    def __init__(self, dataset_path, save_path="./dataset", time_step=0.125) -> None:
         self.dataset_path = dataset_path
         self.supportedFormats = [".mid", ".krn", ".mxl"]
-        self.tr = tr.Transposer()
+        self.tr = Transposer()
         self.savePath = save_path
         self._noChordSymbol = "NC"
+        self._time_step = time_step
 
     def load_songs(self):
-        """Loads all kern pieces in dataset using music21.
+        """Loads all pieces in dataset using music21.
 
         :param dataset_path (str): Path to dataset
         :return songs (list of m21 streams): List containing all pieces
@@ -74,14 +75,14 @@ class Preprocessor:
                 count += 1
         return count
 
-    def encode_song(self, song, time_step=0.125):
+    def encode_song(self, song):
         """Converts a score into a time-series-like music representation. Each item in the encoded list represents 'min_duration'
         quarter lengths. The symbols used at each step are: integers for MIDI notes, 'r' for representing a rest, and '_'
         for representing notes/rests that are carried over into a new time step. Here's a sample encoding:
 
             ["r", "_", "60", "_", "_", "_", "72" "_"]
 
-        :param song (m21 stream): Piece to encode
+        :param song (m21.stream): Piece to encode
         :param time_step (float): Duration of each time step in quarter length
         :return:
         """
@@ -89,10 +90,11 @@ class Preprocessor:
         encoded_song = Song(song.metadata.title)
 
         for event in song.flat.notesAndRests:
-            if isinstance(event.duration.quarterLength, fractions.Fraction):
+            if isinstance(event.duration.quarterLength, fractions.Fraction) or\
+                    event.duration.quarterLength % self._time_step != 0:
                 print(f"Skipping: {encoded_song.get_title()} for not supported metric")
                 raise Exception('Unsupported metric')
-            duration = int(event.duration.quarterLength / time_step)
+            duration = int(event.duration.quarterLength / self._time_step)
             # handle notes
             if isinstance(event, m21.note.Note):
                 symbol = event.pitch.midi  # 60
@@ -116,25 +118,25 @@ class Preprocessor:
 
     def preprocess_single(self, file, songs, count):
         print(f"Process {os.getpid()} processing file number: {count} called: {file} ")
-        extension = os.path.splitext(file)[1]
-        if extension in self.supportedFormats:
-            try:
-                song = m21.converter.parse(os.path.join(self.dataset_path, file))
-                song = self.preprocess_song(song)
-                song = self.encode_song(song)
-                songs.append(song)
-            except:
-                print("Error: cannot parse ", file)
+        song = self.preprocess(os.path.join(self.dataset_path, file))
+        if song is not None:
+            songs.append(song)
         return songs
 
-    def preprocess(self):
-        print("Loading songs...")
-        songs = self.load_songs()
-        for i, song in enumerate(songs):
-            song = self.preprocess_song(song)
-            songs[i] = self.encode_song(song)
-        self.save_dataset(songs)
-        return songs
+    def preprocess(self, path) -> Song:
+        """Preprocess a single song"""
+        extension = os.path.splitext(path)[1]
+        song = None
+        if extension in self.supportedFormats:
+            try:
+                song = m21.converter.parse(path)
+                song = self.preprocess_song(song)
+                song = self.encode_song(song)
+            except:
+                print("Error: cannot parse ", path)
+                song = None
+        return song
+
 
 
 if __name__ == "__main__":
@@ -153,4 +155,4 @@ if __name__ == "__main__":
         print("Processed songs: ", str(len(songs)))
         print("Saving dataset...")
         pre.save_dataset(songs, pretty=args.pretty)
-    print('Total time of elabation: {:.3f} seconds'.format(float(t)))
+    print('Total time of elaboration: {:.3f} seconds'.format(float(t)))

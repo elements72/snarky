@@ -1,6 +1,7 @@
 import collections
 
-class Vocab:  #@save
+
+class Vocab:  # @save
     """Vocabulary for text."""
     def __init__(self, tokens=None, min_freq=0, reserved_tokens=None):
         if tokens is None:
@@ -9,10 +10,11 @@ class Vocab:  #@save
             reserved_tokens = []
         # Sort according to frequencies
         counter = count_corpus(tokens)
+        self.total = 0
         self._token_freqs = sorted(counter.items(), key=lambda x: x[1],
                                    reverse=True)
         # The index for the unknown token is 0
-        self.idx_to_token = ['<unk>'] + reserved_tokens
+        self.idx_to_token = reserved_tokens
         self.token_to_idx = {token: idx
                              for idx, token in enumerate(self.idx_to_token)}
         for token, freq in self._token_freqs:
@@ -21,23 +23,20 @@ class Vocab:  #@save
             if token not in self.token_to_idx:
                 self.idx_to_token.append(token)
                 self.token_to_idx[token] = len(self.idx_to_token) - 1
+                self.total += freq
 
     def __len__(self):
         return len(self.idx_to_token)
 
     def __getitem__(self, tokens):
         if not isinstance(tokens, (list, tuple)):
-            return self.token_to_idx.get(tokens, self.unk)
+            return self.token_to_idx.get(tokens)
         return [self.__getitem__(token) for token in tokens]
 
     def to_tokens(self, indices):
         if not isinstance(indices, (list, tuple)):
             return self.idx_to_token[indices]
         return [self.idx_to_token[index] for index in indices]
-
-    @property
-    def unk(self):  # Index for the unknown token
-        return 0
 
     @property
     def token_freqs(self):  # Index for the unknown token
