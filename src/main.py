@@ -55,15 +55,16 @@ if __name__ == "__main__":
         sequence_single = loader_single.create_sequences(dataset_single, sequence_length)
         params_single = loader_single.get_params()
         """
+
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         snarky.create_model2()
 
         # Load a song for generation input
-        """pre = Preprocessor("./")
+        pre = Preprocessor("./")
         song = pre.preprocess(source_melody)
-        encoded_song = loader_single.encode_song(song.get_song())
-"""
+        encoded_song = loader.encode_song(song.get_song())
+
         #if weights is not None:
         #    snarky.load(weights)
 
@@ -80,7 +81,7 @@ if __name__ == "__main__":
 
         n = 1000
         correct = {"chords": 0, "chords_play": 0, "melody": 0, "m elody_play": 0}
-        for seq, target in sequence_single.take(n):
+        """for seq, target in sequence_single.take(n):
            # print("Input seq:", seq)
             generated = snarky.generate(seq, num_predictions=1)
             generated = generated.squeeze(axis=0)
@@ -93,11 +94,11 @@ if __name__ == "__main__":
             print(f"Target: {y}, output{generated}")
         print(f"Accuracy= {[(correct[key]/n)*100 for key in correct]}")
 
-        # print("Inputs2: ", encoded_song[:sequence_length])
+        # print("Inputs2: ", encoded_song[:sequence_length])"""
         generated = snarky.generate(encoded_song[:sequence_length], num_predictions=n)
         #for target, gen in zip(encoded_song[sequence_length:], generated):
         #    print(f"Target: {target}, generated{gen}")
-        loader_single.save_song(generated, dest_path)
+        loader.save_song(generated, dest_path)
         print(generated)
 
 

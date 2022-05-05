@@ -15,8 +15,7 @@ class Snarky:
 
     def __post_init__(self):
         self._buffer_size = self._batch_size - self._sequence_length
-        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True).cache()
-                          .prefetch(tf.data.experimental.AUTOTUNE))
+        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True))
 
     def create_model2(self, lr=0.001):
         input_shape = (self._sequence_length, len(self._params))

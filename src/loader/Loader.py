@@ -94,7 +94,6 @@ class Loader:
             return inputs, label
 
         def mapping(seq1, seq2, seq3, seq4):
-            print(seq1)
             chords, chords_label = split_label(seq1)
             chords_play, chords_play_label = split_label(seq2)
             melody, melody_label = split_label(seq3)
@@ -103,8 +102,8 @@ class Loader:
             inputs = (chords, chords_play, melody, melody_play)
             labels = (chords_label, chords_play_label, melody_label, melody_play_label)
             labels = {key: labels[i] for i, key in enumerate(self._params)}
-
             return inputs, labels
+
         dataset = tf.data.Dataset.zip((sequences[0], sequences[1], sequences[2], sequences[3]))
         return dataset.map(mapping)
 
