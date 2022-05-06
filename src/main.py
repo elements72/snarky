@@ -1,5 +1,7 @@
 import os.path
 
+import numpy as np
+
 from net import Snarky
 from loader import Loader
 from preprocessor import Preprocessor
@@ -64,13 +66,12 @@ if __name__ == "__main__":
         pre = Preprocessor("./")
         song = pre.preprocess(source_melody)
         encoded_song = loader.encode_song(song.get_song())
-
         #if weights is not None:
         #    snarky.load(weights)
 
         # print(sequence.element_spec)
         # print(sequence_test.element_spec)
-        snarky.train(epochs=1)
+        #snarky.train(epochs=1)
 
         #snarky.evaluate(sequence.batch(batch_size))
 
@@ -95,7 +96,7 @@ if __name__ == "__main__":
         print(f"Accuracy= {[(correct[key]/n)*100 for key in correct]}")
 
         # print("Inputs2: ", encoded_song[:sequence_length])"""
-        generated = snarky.generate(encoded_song[:sequence_length], num_predictions=n)
+        generated = snarky.generate(encoded_song, num_predictions=n)
         #for target, gen in zip(encoded_song[sequence_length:], generated):
         #    print(f"Target: {target}, generated{gen}")
         loader.save_song(generated, dest_path)

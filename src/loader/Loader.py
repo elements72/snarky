@@ -48,15 +48,18 @@ class Loader:
         for key in self._dataset:
             self._vocabulary[key] = Vocab(self._dataset[key])
 
-    def encode_song(self, song: dict) -> np.array:
+    def encode_song(self, song: dict) -> dict:
         """
         Encode a single song
         :param song: Song to be encoded in a dict format
         :type song: dict[str:]
         :return: encoded song array
         """
+        song = {key: self._vocabulary[key][song[key]] for key in song}
+        for key in song:
+            song[key] = tf.keras.utils.to_categorical(song[key], num_classes=len(self._vocabulary[key]))
 
-        return tf.stack([self._vocabulary[key][song[key]] for key in song], axis=1)
+        return song
 
     def create_datasets(self) -> list:
         train_datasets = [self._vocabulary[key][self._dataset[key]] for key in self._dataset]
