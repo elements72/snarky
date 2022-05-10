@@ -48,15 +48,18 @@ class Loader:
         for key in self._dataset:
             self._vocabulary[key] = Vocab(self._dataset[key])
 
-    def encode_song(self, song: dict) -> np.array:
+    def encode_song(self, song: dict) -> dict:
         """
         Encode a single song
         :param song: Song to be encoded in a dict format
         :type song: dict[str:]
         :return: encoded song array
         """
+        song = {key: self._vocabulary[key][song[key]] for key in song}
+        for key in song:
+            song[key] = tf.keras.utils.to_categorical(song[key], num_classes=len(self._vocabulary[key]))
 
-        return tf.stack([self._vocabulary[key][song[key]] for key in song], axis=1)
+        return song
 
     def create_datasets(self) -> list:
         train_datasets = [self._vocabulary[key][self._dataset[key]] for key in self._dataset]
@@ -94,7 +97,6 @@ class Loader:
             return inputs, label
 
         def mapping(seq1, seq2, seq3, seq4):
-            print(seq1)
             chords, chords_label = split_label(seq1)
             chords_play, chords_play_label = split_label(seq2)
             melody, melody_label = split_label(seq3)
@@ -103,8 +105,8 @@ class Loader:
             inputs = (chords, chords_play, melody, melody_play)
             labels = (chords_label, chords_play_label, melody_label, melody_play_label)
             labels = {key: labels[i] for i, key in enumerate(self._params)}
-
             return inputs, labels
+
         dataset = tf.data.Dataset.zip((sequences[0], sequences[1], sequences[2], sequences[3]))
         return dataset.map(mapping)
 

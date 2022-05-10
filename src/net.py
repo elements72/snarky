@@ -15,7 +15,7 @@ class Snarky:
 
     def __post_init__(self):
         self._buffer_size = self._batch_size - self._sequence_length
-        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True).cache()
+        self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True)
                           .prefetch(tf.data.experimental.AUTOTUNE))
 
     def create_model2(self, lr=0.001):
@@ -76,10 +76,12 @@ class Snarky:
     def evaluate(self, sequence: tf.data.Dataset):
         return self.model.evaluate(x=sequence, return_dict=True)
 
-    def predict_next_note(self, notes, temperature: float = 1.0):
+    def predict_next_note(self, inputs: list, temperature: float = 1.0):
         assert temperature > 0
 
-        inputs = tf.expand_dims(notes, 0)
+        inputs = [tf.expand_dims(line, 0) for line in inputs]
+        #print(f"Inputs: {inputs}, notes:{notes}")
+
         predictions = self.model.predict(inputs)
 
         melody_logits = predictions['melody']
@@ -124,14 +126,16 @@ class Snarky:
 
     def generate(self, inputs, temperature: float = 1, num_predictions: int = 125):
         generated_notes = []
+        inputs = [inputs[key][:self._sequence_length] for key in inputs]
         #song = inputs
         #inputs = inputs[:25]
         for i in range(num_predictions):
-            # print("Inputs: ", inputs)
             chord, chord_play, note, note_play = self.predict_next_note(inputs, temperature)
             generated = (chord, chord_play, note, note_play)
-            #print(f"Output atteso: {expected]}, output: {generated}")
+            print("Generated: ", generated)
             generated_notes.append(generated)
-            inputs = np.delete(inputs, 0, axis=0)
-            inputs = np.append(inputs, np.expand_dims(generated, 0), axis=0)
+            # For each line delete and append the new the prediction
+            inputs = [np.delete(line, 0, axis=0) for line in inputs]
+            inputs = [np.append(line, np.expand_dims(tf.keras.utils.to_categorical(predicted, num_classes=self._params[label]), 0), axis=0)
+                      for line, predicted, label in zip(inputs, generated, self._params)]
         return np.array(generated_notes)
