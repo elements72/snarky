@@ -66,6 +66,7 @@ if __name__ == "__main__":
         pre = Preprocessor("./")
         song = pre.preprocess(source_melody)
         encoded_song = loader.encode_song(song.get_song())
+
         if weights is not None:
             snarky.load(weights)
 

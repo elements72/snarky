@@ -109,6 +109,7 @@ class Loader:
             print("Inputs: ", inputs)
             labels = tuple(seqs[key][1] for key in seqs)
             labels = {key: labels[i] for i, key in enumerate(self._params)}
+            print("Inputs: ", labels)
             return inputs, labels
 
         dataset = tf.data.Dataset.zip((*sequences, ))
@@ -155,7 +156,7 @@ class Loader:
     def set_vocabulary(self, vocab):
         self._vocabulary = vocab
 
-    def load(self, vocab=None) -> tf.data.Dataset:
+    def load(self, vocab=None) -> list:
         self.load_dataset()
         if vocab is None:
             self.create_vocabulary()

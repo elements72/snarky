@@ -135,6 +135,8 @@ class Preprocessor:
         if extension in self.supportedFormats:
             try:
                 song = m21.converter.parse(path)
+                if song.timeSignature is not None and song.timeSignature.ratioString != "4/4":
+                    raise Exception("Invalid time signature")
                 song = self.preprocess_song(song)
                 song = self.encode_song(song)
             except:
