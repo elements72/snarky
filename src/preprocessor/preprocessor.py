@@ -11,13 +11,14 @@ class Preprocessor:
     """_summary_
     Preprocess data 
     """
-    def __init__(self, dataset_path, save_path="./dataset", time_step=0.125) -> None:
+    def __init__(self, dataset_path, save_path="./dataset", time_step=0.125, time_signature="4/4") -> None:
         self.dataset_path = dataset_path
         self.supportedFormats = [".mid", ".krn", ".mxl"]
         self.tr = Transposer()
         self.savePath = save_path
         self._noChordSymbol = "NC"
         self._time_step = time_step
+        self._time_signature = time_signature
 
     def load_songs(self):
         """Loads all pieces in dataset using music21.
@@ -55,16 +56,17 @@ class Preprocessor:
         song = self.expand_chords(song)
         return song
 
-    def save_dataset(self, songs, pretty=False):
+    def save_dataset(self, songs, pretty=False, bars=False):
         with open(self.savePath, "w") as fp, open(self.savePath + "NotSaved", "w") as fe:
             saved = 0
             for song in songs:
+                # Check if the song verifies some properties
                 if song.check_properties():
-                    song.write(fp, pretty)
+                    song.write(fp, pretty, bars)
                     fp.write("\n")
                     saved += 1
                 else:
-                    song.write(fe, pretty=True)
+                    song.write(fe, pretty=True, bars=bars)
             print("Saved songs: ", saved)
 
     def count_chords(self, songs):
@@ -75,7 +77,7 @@ class Preprocessor:
                 count += 1
         return count
 
-    def encode_song(self, song):
+    def encode_song(self, song: m21.stream.Score):
         """Converts a score into a time-series-like music representation. Each item in the encoded list represents 'min_duration'
         quarter lengths. The symbols used at each step are: integers for MIDI notes, 'r' for representing a rest, and '_'
         for representing notes/rests that are carried over into a new time step. Here's a sample encoding:
@@ -87,7 +89,10 @@ class Preprocessor:
         :return:
         """
 
-        encoded_song = Song(song.metadata.title)
+        encoded_song = Song(song.metadata.title, time_step=self._time_step)
+        if song.timeSignature.ratioString != self._time_signature:
+            print(f"Skipping: {encoded_song.get_title()} for not supported time signature")
+            raise Exception('Unsupported time signature')
 
         for event in song.flat.notesAndRests:
             if isinstance(event.duration.quarterLength, fractions.Fraction) or\
@@ -148,11 +153,13 @@ if __name__ == "__main__":
         parser.add_argument('destPath', metavar='destPath', type=str,
                             help='the path where save the encoded dataset')
         parser.add_argument('-pretty', action='store_true')
+        parser.add_argument('-time_step', help="Sampling value", type=float)
+        parser.add_argument('-bars', action="store_true")
         args = parser.parse_args()
-        pre = Preprocessor(args.srcPath, save_path=args.destPath)
+        pre = Preprocessor(args.srcPath, save_path=args.destPath, time_step=args.time_step)
         scanner = Scanner(args.srcPath)
         songs = scanner.scan_multi(pre.preprocess_single)
         print("Processed songs: ", str(len(songs)))
         print("Saving dataset...")
-        pre.save_dataset(songs, pretty=args.pretty)
+        pre.save_dataset(songs, pretty=args.pretty, bars=args.bars)
     print('Total time of elaboration: {:.3f} seconds'.format(float(t)))

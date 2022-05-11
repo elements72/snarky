@@ -66,8 +66,8 @@ if __name__ == "__main__":
         pre = Preprocessor("./")
         song = pre.preprocess(source_melody)
         encoded_song = loader.encode_song(song.get_song())
-        #if weights is not None:
-        #    snarky.load(weights)
+        if weights is not None:
+            snarky.load(weights)
 
         # print(sequence.element_spec)
         # print(sequence_test.element_spec)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
 
 
-        n = 1000
+        n = 100
         correct = {"chords": 0, "chords_play": 0, "melody": 0, "m elody_play": 0}
         """for seq, target in sequence_single.take(n):
            # print("Input seq:", seq)
