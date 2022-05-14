@@ -97,7 +97,7 @@ class Preprocessor:
         for event in song.flat.notesAndRests:
             if isinstance(event.duration.quarterLength, fractions.Fraction) or\
                     event.duration.quarterLength % self._time_step != 0:
-                print(f"Skipping: {encoded_song.get_title()} for not supported metric")
+                print(f"Skipping: {encoded_song.get_title()} for not supported metric {event.duration.quarterLength}")
                 raise Exception('Unsupported metric')
             duration = int(event.duration.quarterLength / self._time_step)
             # handle notes

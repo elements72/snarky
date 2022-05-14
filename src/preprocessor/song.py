@@ -27,10 +27,14 @@ class Song:
         self.pad_chords()
         return " ".join(map(str, self._chords))
 
-    def get_song(self, params=["chords", "chords_play", "melody", "melody_play"]):
+    def get_song(self, bars=False):
         self.pad_chords()
-        return {"chords": self._chords, "chords_play": self._chords_holder, "melody": self._melody,
+        song = {"chords": self._chords, "chords_play": self._chords_holder, "melody": self._melody,
                 "melody_play": self._melody_holder}
+        if bars:
+            self.get_bars()
+            song["bars"] = self._bars
+        return song
 
     def pad_chords(self):
         if len(self._chords) == 0:
@@ -62,10 +66,8 @@ class Song:
             for i in range(self._songDuration):
                 if i % self._time_step == 0:
                     self._bars.append("1")
-                    self._bars.append("0")
                 else:
                     self._bars.append("0")
-            self._bars.append("1")
         return " ".join(map(str, self._bars))
 
 

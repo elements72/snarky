@@ -106,7 +106,6 @@ class Snarky:
         inputs = [inputs[key][:self._sequence_length] for key in inputs]
         for i in range(num_predictions):
             generated = self.predict_next_note(inputs, temperature)
-            print("Generated: ", generated)
             generated_notes.append(generated)
             # For each line delete and append the new the prediction
             inputs = [np.delete(line, 0, axis=0) for line in inputs]
