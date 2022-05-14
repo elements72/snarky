@@ -63,10 +63,8 @@ class Loader:
 
     def create_datasets(self) -> list:
         train_datasets = [self._vocabulary[key][self._dataset[key]] for key in self._dataset]
-        train_datasets[0] = tf.keras.utils.to_categorical(train_datasets[0], num_classes=len(self._vocabulary["chords"]))
-        train_datasets[1] = tf.keras.utils.to_categorical(train_datasets[1], num_classes=len(self._vocabulary["chords_play"]))
-        train_datasets[2] = tf.keras.utils.to_categorical(train_datasets[2], num_classes=len(self._vocabulary["melody"]))
-        train_datasets[3] = tf.keras.utils.to_categorical(train_datasets[3], num_classes=len(self._vocabulary["melody_play"]))
+        for i, param in enumerate(self._params):
+            train_datasets[i] = tf.keras.utils.to_categorical(train_datasets[i], num_classes=len(self._vocabulary[param]))
         train_datasets = [tf.data.Dataset.from_tensor_slices(dataset) for dataset in train_datasets]
         return train_datasets
 
@@ -96,18 +94,23 @@ class Loader:
             # labels = {key: labels_dense[i] for i, key in enumerate(self._params)}
             return inputs, label
 
-        def mapping(seq1, seq2, seq3, seq4):
-            chords, chords_label = split_label(seq1)
-            chords_play, chords_play_label = split_label(seq2)
-            melody, melody_label = split_label(seq3)
-            melody_play, melody_play_label = split_label(seq4)
+        def mapping(*seqs):
+            print("Seqs: ", seqs)
+            seqs = {key: split_label(sq) for key, sq in zip(self._params, seqs)}
+            print("Seqs: ", seqs)
+            #chords, chords_label = split_label(seq1)
+            #chords_play, chords_play_label = split_label(seq2)
+            #melody, melody_label = split_label(seq3)
+            #melody_play, melody_play_label = split_label(seq4)
 
-            inputs = (chords, chords_play, melody, melody_play)
-            labels = (chords_label, chords_play_label, melody_label, melody_play_label)
+            #inputs = (chords, chords_play, melody, melody_play)
+            #labels = (chords_label, chords_play_label, melody_label, melody_play_label)
+            inputs = tuple(seqs[key][0] for key in seqs)
+            labels = tuple(seqs[key][1] for key in seqs)
             labels = {key: labels[i] for i, key in enumerate(self._params)}
             return inputs, labels
 
-        dataset = tf.data.Dataset.zip((sequences[0], sequences[1], sequences[2], sequences[3]))
+        dataset = tf.data.Dataset.zip((*sequences, ))
         return dataset.map(mapping)
 
     def create_sequences(self, dataset: tf.data.Dataset, seq_length: int) -> tf.data.Dataset:
@@ -151,7 +154,7 @@ class Loader:
     def set_vocabulary(self, vocab):
         self._vocabulary = vocab
 
-    def load(self, vocab=None) -> tf.data.Dataset:
+    def load(self, vocab=None) -> list:
         self.load_dataset()
         if vocab is None:
             self.create_vocabulary()
@@ -179,7 +182,8 @@ if __name__ == "__main__":
                             help='the path of the dataset')
         args = parser.parse_args()
         path = args.path
-        loader = Loader(path, _mapping_path=args.mapping_path)
+        params = ["chords", "chords_play", "melody", "melody_play"]
+        loader = Loader(path, _mapping_path=args.mapping_path, _params=params)
         dataset = loader.load()
         sequence = loader.create_sequences(dataset, 25)
         for seq, target in sequence.take(1):

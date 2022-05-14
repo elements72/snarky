@@ -6,7 +6,7 @@ import argparse
 @dataclass
 class Decoder:
     stream: m21.stream = field(init=False, default_factory=lambda: m21.stream.Stream())
-    time_step = 0.125
+    time_step: float = 0.125
     offset: float = 0
 
     def encode_chord(self, chord, duration):
@@ -58,9 +58,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process songs dataset.')
     parser.add_argument('path', metavar='path', type=str,
                         help='the path of the song')
+    parser.add_argument('-time_step', metavar='path', type=float,
+                        help='Time step')
     args = parser.parse_args()
     path = args.path
     print(path)
-    dec = Decoder()
+    dec = Decoder(time_step=args.time_step)
 
     dec.create_midi(path=path)

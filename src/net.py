@@ -21,18 +21,21 @@ class Snarky:
     def create_model2(self, lr=0.001):
         input_shape = (self._sequence_length, len(self._params))
 
-        input_chord = tf.keras.Input((self._sequence_length, self._params["chords"]))
-        input_chord_play = tf.keras.Input((self._sequence_length, self._params["chords_play"]))
-        input_melody = tf.keras.Input((self._sequence_length, self._params["melody"]))
-        input_melody_play = tf.keras.Input((self._sequence_length, self._params["melody_play"]))
+        #input_chord = tf.keras.Input((self._sequence_length, self._params["chords"]))
+        #input_chord_play = tf.keras.Input((self._sequence_length, self._params["chords_play"]))
+        #input_melody = tf.keras.Input((self._sequence_length, self._params["melody"]))
+        #input_melody_play = tf.keras.Input((self._sequence_length, self._params["melody_play"]))
 
-        inputs = tf.keras.layers.Concatenate(axis=-1)([input_chord, input_chord_play, input_melody, input_melody_play])
 
-        x = tf.keras.layers.LSTM(128)(inputs)
+        inputs = [tf.keras.Input((self._sequence_length, self._params[param])) for param in self._params]
+        #inputs = tf.keras.layers.Concatenate(axis=-1)([input_chord, input_chord_play, input_melody, input_melody_play])
+        concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
+
+        x = tf.keras.layers.LSTM(128)(concat)
 
         outputs = {key: tf.keras.layers.Dense(self._params[key], name=key)(x) for key in self._params}
 
-        model = tf.keras.Model([input_chord, input_chord_play, input_melody, input_melody_play], outputs)
+        model = tf.keras.Model(inputs, outputs)
 
         loss = {key: tf.keras.losses.CategoricalCrossentropy(from_logits=True) for key in self._params}
         metrics = {key: tf.keras.metrics.CategoricalAccuracy() for key in self._params}
@@ -78,36 +81,10 @@ class Snarky:
 
     def predict_next_note(self, inputs: list, temperature: float = 1.0):
         assert temperature > 0
-
         inputs = [tf.expand_dims(line, 0) for line in inputs]
-        #print(f"Inputs: {inputs}, notes:{notes}")
-
         predictions = self.model.predict(inputs)
-
-        melody_logits = predictions['melody']
-        chords_logits = predictions['chords']
-        chord_play_logits = predictions['chords_play']
-        melody_play_logits = predictions['melody_play']
-
-        melody_logits /= temperature
-        #melody = tf.random.categorical(melody_logits, num_samples=1)
-        melody = tf.argmax(melody_logits, axis=-1)
-        melody = tf.squeeze(melody, axis=-1)
-
-        chords_logits /= temperature
-        #print(chords_logits.shape)
-        chord = tf.random.categorical(chords_logits, num_samples=1)
-        #print(chord.shape)
-        chord = tf.argmax(chords_logits, axis=-1)
-        #print(chord)
-        chord = tf.squeeze(chord, axis=-1)
-
-        melody_play = tf.random.categorical(melody_play_logits, num_samples=1)
-        melody_play = tf.squeeze(melody_play, axis=-1)
-        chord_play = tf.random.categorical(chord_play_logits, num_samples=1)
-        chord_play = tf.squeeze(chord_play, axis=-1)
-
-        return int(chord), int(chord_play), int(melody), int(melody_play)
+        predicted = [int(tf.squeeze(tf.argmax(predictions[param], axis=-1), axis=-1)) for param in self._params]
+        return tuple(predicted)
 
     def save(self, path="model.params") -> None:
         """
@@ -127,12 +104,8 @@ class Snarky:
     def generate(self, inputs, temperature: float = 1, num_predictions: int = 125):
         generated_notes = []
         inputs = [inputs[key][:self._sequence_length] for key in inputs]
-        #song = inputs
-        #inputs = inputs[:25]
         for i in range(num_predictions):
-            chord, chord_play, note, note_play = self.predict_next_note(inputs, temperature)
-            generated = (chord, chord_play, note, note_play)
-            print("Generated: ", generated)
+            generated = self.predict_next_note(inputs, temperature)
             generated_notes.append(generated)
             # For each line delete and append the new the prediction
             inputs = [np.delete(line, 0, axis=0) for line in inputs]
