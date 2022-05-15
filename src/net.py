@@ -33,11 +33,11 @@ class Snarky:
 
         x = tf.keras.layers.LSTM(128)(concat)
 
-        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key)(x) for key in self._params}
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x) for key in self._params}
 
         model = tf.keras.Model(inputs, outputs)
 
-        loss = {key: tf.keras.losses.CategoricalCrossentropy(from_logits=True) for key in self._params}
+        loss = {key: tf.keras.losses.CategoricalCrossentropy() for key in self._params}
         metrics = {key: tf.keras.metrics.CategoricalAccuracy() for key in self._params}
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
