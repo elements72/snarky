@@ -18,6 +18,10 @@ class Snarky:
         self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True)
                           .prefetch(tf.data.experimental.AUTOTUNE))
 
+
+    def summary(self):
+        return self.model.summary()
+
     def create_model2(self, lr=0.001):
         input_shape = (self._sequence_length, len(self._params))
 
@@ -44,7 +48,7 @@ class Snarky:
 
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
-        model.summary()
+        # model.summary()
         self.model = model
 
         return self.model
