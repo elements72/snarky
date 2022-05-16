@@ -49,6 +49,7 @@ class Decoder:
             last_symbol = symbol
 
     def create_midi(self, path="generated"):
+        self.stream.insert(0, m21.metadata.Metadata(title=path))
         with open(path, "r") as fp:
             self.encode(fp, self.encode_chord)
             self.encode(fp, self.encode_note)

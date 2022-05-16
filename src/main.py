@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
         # print(sequence.element_spec)
         # print(sequence_test.element_spec)
-        #snarky.train(epochs=1)
+        # snarky.train(epochs=1)
 
         # snarky.evaluate(sequence.batch(batch_size))
 

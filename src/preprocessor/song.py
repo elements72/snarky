@@ -95,8 +95,8 @@ class Song:
         fp.write(self.get_melody())
         fp.write("\n")
         fp.write(self.get_melody_holder())
-        fp.write("\n")
         if bars:
+            fp.write("\n")
             fp.write(self.get_bars())
         if pretty:
             fp.write("\n")

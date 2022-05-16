@@ -95,9 +95,7 @@ class Loader:
             return inputs, label
 
         def mapping(*seqs):
-            print("Seqs: ", seqs)
             seqs = {key: split_label(sq) for key, sq in zip(self._params, seqs)}
-            print("Seqs: ", seqs)
             #chords, chords_label = split_label(seq1)
             #chords_play, chords_play_label = split_label(seq2)
             #melody, melody_label = split_label(seq3)
