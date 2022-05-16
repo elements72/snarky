@@ -22,7 +22,7 @@ class Snarky:
     def summary(self):
         return self.model.summary()
 
-    def create_model2(self, lr=0.001):
+    def create_model2(self, lr=0.001, num_units=128):
         input_shape = (self._sequence_length, len(self._params))
 
         #input_chord = tf.keras.Input((self._sequence_length, self._params["chords"]))
@@ -35,7 +35,7 @@ class Snarky:
         #inputs = tf.keras.layers.Concatenate(axis=-1)([input_chord, input_chord_play, input_melody, input_melody_play])
         concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
 
-        x = tf.keras.layers.LSTM(128)(concat)
+        x = tf.keras.layers.LSTM(num_units)(concat)
 
         outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x) for key in self._params}
 
@@ -52,10 +52,10 @@ class Snarky:
         self.model = model
 
         return self.model
-    def create_model(self, lr=0.001):
+    def create_model(self, lr=0.001, num_units=128):
         input_shape = (self._sequence_length, len(self._params))
         inputs = tf.keras.Input(input_shape)
-        x = tf.keras.layers.LSTM(128)(inputs)
+        x = tf.keras.layers.LSTM(num_units)(inputs)
         outputs = {key: tf.keras.layers.Dense(self._params[key], name=key)(x) for key in self._params}
 
         model = tf.keras.Model(inputs, outputs)
