@@ -1,3 +1,5 @@
+import pathlib
+
 import music21 as m21
 from dataclasses import dataclass, field
 import argparse
@@ -10,18 +12,16 @@ class Decoder:
     offset: float = 0
 
     def encode_chord(self, chord, duration):
-        print(chord)
         if chord == "NC":
             chord = m21.harmony.NoChord()
         else:
             chord = chord.split(",")[0]
             chord = m21.harmony.ChordSymbol(chord)
         chord.duration.quarterLength = duration * self.time_step
-        print(chord)
         self.stream.append(chord)
 
     def encode_note(self, note, duration):
-        print(f"Adding note: {note} with duration {duration}")
+        # print(f"Adding note: {note} with duration {duration}")
         if note == "r":
             note = m21.note.Rest()
         else:
@@ -48,8 +48,8 @@ class Decoder:
                 duration += 1
             last_symbol = symbol
 
-    def create_midi(self, path="generated"):
-        self.stream.insert(0, m21.metadata.Metadata(title=path))
+    def show_midi(self, path="generated", name="generated"):
+        self.stream.insert(0, m21.metadata.Metadata(title=name))
         with open(path, "r") as fp:
             self.encode(fp, self.encode_chord)
             self.encode(fp, self.encode_note)
@@ -63,7 +63,6 @@ if __name__ == "__main__":
                         help='Time step')
     args = parser.parse_args()
     path = args.path
-    print(path)
     dec = Decoder(time_step=args.time_step)
-
-    dec.create_midi(path=path)
+    name = pathlib.PurePath(path).name
+    dec.show_midi(path=path, name=name)
