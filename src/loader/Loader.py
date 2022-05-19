@@ -74,7 +74,7 @@ class Loader:
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         return train_dataset
 
-    def create_sequences2(self, datasets: list, seq_length: int) -> tf.data.Dataset:
+    def create_sequences(self, datasets: list, seq_length: int) -> tf.data.Dataset:
         """Returns TF Dataset of sequence and label examples."""
         seq_length = seq_length + 1
 
@@ -110,29 +110,6 @@ class Loader:
 
         dataset = tf.data.Dataset.zip((*sequences, ))
         return dataset.map(mapping)
-
-    def create_sequences(self, dataset: tf.data.Dataset, seq_length: int) -> tf.data.Dataset:
-        """Returns TF Dataset of sequence and label examples."""
-        seq_length = seq_length + 1
-
-        # Take 1 extra for the labels
-        windows = dataset.window(seq_length, shift=1, stride=1,
-                                 drop_remainder=True)
-
-        # `flat_map` flattens the" dataset of datasets" into a dataset of tensors
-        flatten = lambda x: x.batch(seq_length, drop_remainder=True)
-        sequences = windows.flat_map(flatten)
-
-
-
-        # Split the labels
-        def split_labels(sequences):
-            inputs = sequences[:-1]
-            labels_dense = sequences[-1]
-            labels = {key: labels_dense[i] for i, key in enumerate(self._params)}
-            return inputs, labels
-
-        return sequences.map(split_labels, num_parallel_calls=tf.data.AUTOTUNE)
 
     def print_vocabulary(self):
         for key in self._params:

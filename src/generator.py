@@ -6,6 +6,7 @@ from preprocessor import Preprocessor
 import argparse
 from decoder import Decoder
 import pathlib
+import glob
 from chronometer import Chronometer
 
 
@@ -19,10 +20,11 @@ def initialize_arguments():
 
 
 
-def generate(dir, source_melody, bars=False, time_step=0.125 ,num_predictions=100, dest="generated", weights="model.params"):
+def generate(dir, source_melody, bars=False, time=32 ,num_predictions=100, dest="generated", weights="model.params", num_units=128):
     batch_size = 64
     sequence_length = 32
     buffer_size = batch_size - sequence_length
+    time_step = 4 / int(time)
 
     num_predictions = int(num_predictions * (4/time_step))
     params = ["chords", "chords_play", "melody", "melody_play"]
@@ -36,26 +38,38 @@ def generate(dir, source_melody, bars=False, time_step=0.125 ,num_predictions=10
     # Load the dataset and create the sequence
     loader = Loader(os.path.join(dir, "train"), _params=params)
     dataset = loader.load()
-    sequence = loader.create_sequences2(dataset, sequence_length)
+    sequence = loader.create_sequences(dataset, sequence_length)
     params = loader.get_params()
 
-    # Decoder
-    decoder = Decoder(time_step=time_step)
 
-    # Create the model
-    snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-    snarky.create_model2()
+    for weights in glob.glob(f"{weights}*.index"):
+        save_path = dest_path
+        weights = pathlib.PurePath(weights)
+        num_units = re.findall('[0-9]+', weights.name)
+        if len(num_units) == 0:
+            num_units = 128
+        else:
+            num_units = int(num_units[0])
+        print(f"Processing dir: {dir}, with num_units: {num_units}")
+        name = f"{dest}_{time}{'B' if bars else ''}_{num_units}"
+        save_path = f"{save_path}_{time}{'B' if bars else ''}_{num_units}"
+        # Create the model
+        snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
+        snarky.create_model(num_units=num_units)
 
-    # Load a song for generation input
-    pre = Preprocessor("./", params, time_step=time_step)
-    song = pre.preprocess(source_melody)
-    encoded_song = loader.encode_song(song.get_song(bars=bars))
+        # Load a song for generation input
+        pre = Preprocessor("./", params, time_step=time_step)
+        song = pre.preprocess(source_melody)
+        encoded_song = loader.encode_song(song.get_song(bars=bars))
 
-    snarky.load(weights)
-    generated = snarky.generate(encoded_song, num_predictions=num_predictions)
+        snarky.load(os.path.splitext(weights.as_posix())[0])
+        generated = snarky.generate(encoded_song, num_predictions=num_predictions)
 
-    loader.save_song(generated, dest_path)
-    decoder.create_midi(dest_path)
+        loader.save_song(generated, save_path)
+        # Decoder
+        decoder = Decoder(time_step=time_step)
+
+        decoder.show_midi(path=save_path, name=name)
     return generated
 
 
@@ -69,11 +83,11 @@ if __name__ == "__main__":
             bars = False
         numbers = re.findall('[0-9]+', dir)
         if len(numbers) > 0:
-            time_step = 4 / int(numbers[0])
+            time = numbers[0]
         else:
             continue
         try:
             generate(os.path.join(path, dir), bars=bars, source_melody=args.source, num_predictions=args.predictions,
-                     time_step=time_step)
-        except:
-            print(f"Failed to generate: {dir}")
+                     time=time, weights="model.params")
+        except Exception as e:
+            print(f"Failed to generate: {dir}, error: {e}")

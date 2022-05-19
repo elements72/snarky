@@ -17,25 +17,17 @@ class Snarky:
         self._buffer_size = self._batch_size - self._sequence_length
         self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True)
                           .prefetch(tf.data.experimental.AUTOTUNE))
+        tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
     def summary(self):
         return self.model.summary()
 
-    def create_model2(self, lr=0.001):
-        input_shape = (self._sequence_length, len(self._params))
-
-        #input_chord = tf.keras.Input((self._sequence_length, self._params["chords"]))
-        #input_chord_play = tf.keras.Input((self._sequence_length, self._params["chords_play"]))
-        #input_melody = tf.keras.Input((self._sequence_length, self._params["melody"]))
-        #input_melody_play = tf.keras.Input((self._sequence_length, self._params["melody_play"]))
-
-
+    def create_model(self, lr=0.001, num_units=128):
         inputs = [tf.keras.Input((self._sequence_length, self._params[param])) for param in self._params]
-        #inputs = tf.keras.layers.Concatenate(axis=-1)([input_chord, input_chord_play, input_melody, input_melody_play])
         concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
 
-        x = tf.keras.layers.LSTM(128)(concat)
+        x = tf.keras.layers.LSTM(num_units)(concat)
 
         outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x) for key in self._params}
 
@@ -49,25 +41,6 @@ class Snarky:
         model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
         # model.summary()
-        self.model = model
-
-        return self.model
-    def create_model(self, lr=0.001):
-        input_shape = (self._sequence_length, len(self._params))
-        inputs = tf.keras.Input(input_shape)
-        x = tf.keras.layers.LSTM(128)(inputs)
-        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key)(x) for key in self._params}
-
-        model = tf.keras.Model(inputs, outputs)
-
-        loss = {key: tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True) for key in self._params}
-        metrics = {key: tf.keras.metrics.SparseCategoricalAccuracy() for key in self._params}
-
-        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
-
-        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
-
-        model.summary()
         self.model = model
 
         return self.model
