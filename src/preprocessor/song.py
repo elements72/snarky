@@ -59,16 +59,32 @@ class Song:
     def add_chord(self, chord, duration, hold_symbol="_", append=True):
         self.add_symbol(self._chords, self._chords_holder, chord, duration, hold_symbol, append)
 
+    def split_bar(self, split: int):
+        bars = []
+        for i in range(self._songDuration):
+            if i % split == 0:
+                bars.append("1")
+            else:
+                bars.append("0")
+        return bars
+
     def get_bars(self):
         nbars = int(self._songDuration / self._time_step)
         bars_len = nbars + self._songDuration + 1
         if len(self._bars) < bars_len:
-            for i in range(self._songDuration):
-                if i % self._time_step == 0:
-                    self._bars.append("1")
-                else:
-                    self._bars.append("0")
+            self._bars = self.split_bar(self._time_step)
         return " ".join(map(str, self._bars))
+
+    def get_upbeat(self):
+        split = int(self._time_step / 8)
+        upbeat = []
+        symbol = "0"
+        for i in range(self._songDuration):
+            if i % split == 0:
+                symbol = "1" if symbol == "0" else "0"
+            upbeat.append(symbol)
+        return " ".join(map(str, upbeat))
+
 
 
     def get_title(self):
@@ -84,7 +100,7 @@ class Song:
         self.pad_chords()
         return len(self._chords) == len(self._melody)
 
-    def write(self, fp, pretty=False, bars=False):
+    def write(self, fp, pretty=False, bars=False, upbeat=False):
         if pretty:
             fp.write(self._title)
             fp.write("\n")
@@ -98,6 +114,9 @@ class Song:
         if bars:
             fp.write("\n")
             fp.write(self.get_bars())
+        if upbeat:
+            fp.write("\n")
+            fp.write(self.get_upbeat())
         if pretty:
             fp.write("\n")
             fp.write(f"{str(len(self._chords))} ")

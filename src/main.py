@@ -18,6 +18,7 @@ def initialize_arguments():
     parser.add_argument('-weights', metavar='params', type=str, help='params of the net', required=False)
     parser.add_argument('-weights_save', metavar='params', type=str, help='params of the net', required=False)
     parser.add_argument('-bars', help='include bars', action="store_true")
+    parser.add_argument('-upbeat', help='include upbeat', action="store_true")
     parser.add_argument('-time_step', help='Time step', type=float)
 
     return parser.parse_args()
@@ -36,6 +37,8 @@ if __name__ == "__main__":
         params = ["chords", "chords_play", "melody", "melody_play"]
         if args.bars:
             params.append("bars")
+        if args.upbeat:
+            params.append("upbeat")
 
         num_predictions = args.predictions if args.predictions else 100
         dest_path = args.dest if args.dest else "./generated"
@@ -59,6 +62,9 @@ if __name__ == "__main__":
 
         if weights is not None:
             snarky.load(weights)
+
+        snarky.train()
+
 
         generated = snarky.generate(encoded_song, num_predictions=num_predictions)
 
