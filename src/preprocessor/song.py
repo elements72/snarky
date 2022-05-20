@@ -27,13 +27,15 @@ class Song:
         self.pad_chords()
         return " ".join(map(str, self._chords))
 
-    def get_song(self, bars=False):
+    def get_song(self, bars=False, upbeat=False):
         self.pad_chords()
         song = {"chords": self._chords, "chords_play": self._chords_holder, "melody": self._melody,
                 "melody_play": self._melody_holder}
         if bars:
             self.get_bars()
             song["bars"] = self._bars
+        if upbeat:
+            song["upbeat"] = self.get_upbeat(type=list)
         return song
 
     def pad_chords(self):
@@ -75,7 +77,7 @@ class Song:
             self._bars = self.split_bar(self._time_step)
         return " ".join(map(str, self._bars))
 
-    def get_upbeat(self):
+    def get_upbeat(self, type=str):
         split = int(self._time_step / 8)
         upbeat = []
         symbol = "0"
@@ -83,7 +85,10 @@ class Song:
             if i % split == 0:
                 symbol = "1" if symbol == "0" else "0"
             upbeat.append(symbol)
-        return " ".join(map(str, upbeat))
+        if type == str:
+            return " ".join(map(str, upbeat))
+        else:
+            return upbeat
 
 
 
