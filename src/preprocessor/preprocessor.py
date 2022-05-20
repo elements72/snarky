@@ -56,17 +56,17 @@ class Preprocessor:
         song = self.expand_chords(song)
         return song
 
-    def save_dataset(self, songs, pretty=False, bars=False):
+    def save_dataset(self, songs, pretty=False, bars=False, upbeat=False):
         with open(self.savePath, "w") as fp, open(self.savePath + "NotSaved", "w") as fe:
             saved = 0
             for song in songs:
                 # Check if the song verifies some properties
                 if song.check_properties():
-                    song.write(fp, pretty, bars)
+                    song.write(fp, pretty, bars, upbeat)
                     fp.write("\n")
                     saved += 1
                 else:
-                    song.write(fe, pretty=True, bars=bars)
+                    song.write(fe, pretty=True, bars=bars, upbeat=upbeat)
             print("Saved songs: ", saved)
 
     def count_chords(self, songs):
@@ -145,23 +145,26 @@ class Preprocessor:
         return song
 
 
+def initialize_arguments():
+    parser = argparse.ArgumentParser(description='Process songs dataset.')
+    parser.add_argument('srcPath', metavar='path', type=str,
+                        help='the path of the dataset')
+    parser.add_argument('destPath', metavar='destPath', type=str,
+                        help='the path where save the encoded dataset')
+    parser.add_argument('-pretty', action='store_true')
+    parser.add_argument('-time_step', help="Sampling value", type=float)
+    parser.add_argument('-bars', action="store_true")
+    parser.add_argument('-upbeat', action="store_true")
+    args = parser.parse_args()
+    return args
 
 if __name__ == "__main__":
-    # print(pre.count_chords(scanner.scan_multi(pre.load_songs)))
     with Chronometer() as t:
-        parser = argparse.ArgumentParser(description='Process songs dataset.')
-        parser.add_argument('srcPath', metavar='path', type=str,
-                            help='the path of the dataset')
-        parser.add_argument('destPath', metavar='destPath', type=str,
-                            help='the path where save the encoded dataset')
-        parser.add_argument('-pretty', action='store_true')
-        parser.add_argument('-time_step', help="Sampling value", type=float)
-        parser.add_argument('-bars', action="store_true")
-        args = parser.parse_args()
+        args = initialize_arguments()
         pre = Preprocessor(args.srcPath, save_path=args.destPath, time_step=args.time_step)
         scanner = Scanner(args.srcPath)
         songs = scanner.scan_multi(pre.preprocess_single)
         print("Processed songs: ", str(len(songs)))
         print("Saving dataset...")
-        pre.save_dataset(songs, pretty=args.pretty, bars=args.bars)
+        pre.save_dataset(songs, pretty=args.pretty, bars=args.bars, upbeat=args.upbeat)
     print('Total time of elaboration: {:.3f} seconds'.format(float(t)))

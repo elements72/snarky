@@ -20,7 +20,7 @@ def initialize_arguments():
 
 
 
-def generate(dir, source_melody, bars=False, time=32 ,num_predictions=100, dest="generated", weights="model.params", num_units=128):
+def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predictions=100, dest="generated", weights="model.params", num_units=128):
     batch_size = 64
     sequence_length = 32
     buffer_size = batch_size - sequence_length
@@ -30,6 +30,8 @@ def generate(dir, source_melody, bars=False, time=32 ,num_predictions=100, dest=
     params = ["chords", "chords_play", "melody", "melody_play"]
     if bars:
         params.append("bars")
+    if upbeat:
+        params.append("upbeat")
 
     dest = pathlib.PurePath(source_melody).stem
     dest_path = os.path.join(dir, dest)
@@ -51,7 +53,7 @@ def generate(dir, source_melody, bars=False, time=32 ,num_predictions=100, dest=
         else:
             num_units = int(num_units[0])
         print(f"Processing dir: {dir}, with num_units: {num_units}")
-        name = f"{dest}_{time}{'B' if bars else ''}_{num_units}"
+        name = f"{dest}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{num_units}"
         save_path = f"{save_path}_{time}{'B' if bars else ''}_{num_units}"
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
@@ -60,7 +62,7 @@ def generate(dir, source_melody, bars=False, time=32 ,num_predictions=100, dest=
         # Load a song for generation input
         pre = Preprocessor("./", params, time_step=time_step)
         song = pre.preprocess(source_melody)
-        encoded_song = loader.encode_song(song.get_song(bars=bars))
+        encoded_song = loader.encode_song(song.get_song(bars=bars, upbeat=upbeat))
 
         snarky.load(os.path.splitext(weights.as_posix())[0])
         generated = snarky.generate(encoded_song, num_predictions=num_predictions)
@@ -81,6 +83,10 @@ if __name__ == "__main__":
             bars = True
         else:
             bars = False
+        if "U" in dir:
+            upbeat = True
+        else:
+            upbeat = False
         numbers = re.findall('[0-9]+', dir)
         if len(numbers) > 0:
             time = numbers[0]
@@ -88,6 +94,6 @@ if __name__ == "__main__":
             continue
         try:
             generate(os.path.join(path, dir), bars=bars, source_melody=args.source, num_predictions=args.predictions,
-                     time=time, weights="model.params")
+                     time=time, weights="model.params", upbeat=upbeat)
         except Exception as e:
             print(f"Failed to generate: {dir}, error: {e}")
