@@ -61,10 +61,11 @@ class Loader:
 
         return song
 
-    def create_datasets(self) -> list:
+    def create_datasets(self, categorical=True) -> list:
         train_datasets = [self._vocabulary[key][self._dataset[key]] for key in self._dataset]
-        for i, param in enumerate(self._params):
-            train_datasets[i] = tf.keras.utils.to_categorical(train_datasets[i], num_classes=len(self._vocabulary[param]))
+        if categorical:
+            for i, param in enumerate(self._params):
+                train_datasets[i] = tf.keras.utils.to_categorical(train_datasets[i], num_classes=len(self._vocabulary[param]))
         train_datasets = [tf.data.Dataset.from_tensor_slices(dataset) for dataset in train_datasets]
         return train_datasets
 
@@ -129,13 +130,13 @@ class Loader:
     def set_vocabulary(self, vocab):
         self._vocabulary = vocab
 
-    def load(self, vocab=None) -> list:
+    def load(self, vocab=None, categorical=True) -> list:
         self.load_dataset()
         if vocab is None:
             self.create_vocabulary()
         else:
             self._vocabulary = vocab
-        return self.create_datasets()
+        return self.create_datasets(categorical)
 
     def get_vocabulary(self):
         return self._vocabulary

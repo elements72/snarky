@@ -47,26 +47,30 @@ if __name__ == "__main__":
 
         # Load the dataset and create the sequence
         loader = Loader(os.path.join(path, "train"), _params=params)
-        dataset = loader.load()
+        dataset = loader.load(categorical=True)
         sequence = loader.create_sequences(dataset, sequence_length)
         params = loader.get_params()
 
-        # Create the model
+        # Create the modelinputs
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-        snarky.create_model(num_units=512)
 
-        # Load a song for generation input
-        pre = Preprocessor("./", params, time_step=args.time_step)
-        song = pre.preprocess(source_melody)
-        encoded_song = loader.encode_song(song.get_song(bars=args.bars))
+        # snarky.create_model(num_units=512)
+        snarky.autoencoder(num_units=128)
 
         if weights is not None:
             snarky.load(weights)
 
+        snarky.summary()
         snarky.train()
 
 
-        generated = snarky.generate(encoded_song, num_predictions=num_predictions)
+        if source_melody is not None:
+            # Load a song for generation input
+            pre = Preprocessor("./", params, time_step=args.time_step)
+            song = pre.preprocess(source_melody)
+            encoded_song = loader.encode_song(song.get_song(bars=args.bars))
+            generated = snarky.generate(encoded_song, num_predictions=num_predictions)
+
 
         loader.save_song(generated, dest_path)
         print(generated)

@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow import keras
 from dataclasses import dataclass, field
 import numpy as np
 
@@ -20,8 +21,62 @@ class Snarky:
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-    def summary(self):
-        return self.model.summary()
+    def summary(self, to="model.png"):
+        tf.keras.utils.plot_model(
+            self.model,
+            to_file=to,
+            show_shapes=True,
+            show_layer_names=True,
+            show_layer_activations=True
+        )
+
+    def create_autoencoder(self, line, num_feature: int, num_units=128):
+        encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True, name=f"LSTM__{num_feature}")(line)
+        encoder = tf.keras.layers.LSTM(int(num_units/2), activation='relu', return_sequences=False)(encoder)
+
+        repeat_vector = tf.keras.layers.RepeatVector(self._sequence_length)(encoder)
+
+        decoder = tf.keras.layers.LSTM(int(num_units/2), activation='relu', return_sequences=True)(repeat_vector)
+        decoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(decoder)
+
+        return tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(num_feature))(decoder)
+
+    def autoencoder(self, lr=0.001, num_units=128):
+        inputs = []
+        autoencoder_out = []
+        for i, param in enumerate(self._params):
+            num_feature = self._params[param]
+            line = tf.keras.Input((self._sequence_length, self._params[param]))
+            inputs.append(line)
+            encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True,
+                                           name=f"LSTM__{num_feature}")(line)
+            encoder = tf.keras.layers.LSTM(int(num_units / 2), activation='relu', return_sequences=False)(encoder)
+
+            repeat_vector = tf.keras.layers.RepeatVector(self._sequence_length)(encoder)
+
+            decoder = tf.keras.layers.LSTM(int(num_units / 2), activation='relu', return_sequences=True)(repeat_vector)
+            decoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(decoder)
+            time_dist = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(num_feature))(decoder)
+            autoencoder_out.append(time_dist)
+        concat = tf.keras.layers.Concatenate()(autoencoder_out)
+        x = tf.keras.layers.LSTM(num_units)(concat)
+
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x)
+                   for key in self._params}
+
+        model = tf.keras.Model(inputs, outputs)
+
+        loss = {key: tf.keras.losses.CategoricalCrossentropy() for key in self._params}
+        metrics = {key: tf.keras.metrics.CategoricalAccuracy() for key in self._params}
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+
+        model.summary()
+        self.model = model
+
+        return self.model
 
     def create_model(self, lr=0.001, num_units=128):
         inputs = [tf.keras.Input((self._sequence_length, self._params[param])) for param in self._params]
