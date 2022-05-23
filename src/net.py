@@ -31,7 +31,7 @@ class Snarky:
         )
 
     def create_autoencoder(self, line, num_feature: int, num_units=128):
-        encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True, name=f"LSTM__{num_feature}")(line)
+        encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(line)
         encoder = tf.keras.layers.LSTM(int(num_units/2), activation='relu', return_sequences=False)(encoder)
 
         repeat_vector = tf.keras.layers.RepeatVector(self._sequence_length)(encoder)
@@ -48,8 +48,7 @@ class Snarky:
             num_feature = self._params[param]
             line = tf.keras.Input((self._sequence_length, self._params[param]))
             inputs.append(line)
-            encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True,
-                                           name=f"LSTM__{num_feature}")(line)
+            encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(line)
             encoder = tf.keras.layers.LSTM(int(num_units / 2), activation='relu', return_sequences=False)(encoder)
 
             repeat_vector = tf.keras.layers.RepeatVector(self._sequence_length)(encoder)
