@@ -19,7 +19,9 @@ def initialize_arguments():
     parser.add_argument('-weights_save', metavar='params', type=str, help='params of the net', required=False)
     parser.add_argument('-bars', help='include bars', action="store_true")
     parser.add_argument('-upbeat', help='include upbeat', action="store_true")
+    parser.add_argument('-autoencoder', help='use autoencoder', action="store_true")
     parser.add_argument('-time_step', help='Time step', type=float)
+    parser.add_argument('-num_units', help='num units', type=int)
 
     return parser.parse_args()
 
@@ -40,7 +42,8 @@ if __name__ == "__main__":
         if args.upbeat:
             params.append("upbeat")
 
-        num_predictions = args.predictions if args.predictions else 100
+        num_predictions = args.predictions if args.predictions else 400
+        num_predictions = int(num_predictions * (4 / args.time_step))
         dest_path = args.dest if args.dest else "./generated"
         weights = args.weights if args.weights else None
         weights_save = args.weights_save if args.weights_save else None
@@ -53,26 +56,27 @@ if __name__ == "__main__":
 
         # Create the modelinputs
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-
-        # snarky.create_model(num_units=512)
-        snarky.autoencoder(num_units=128)
+        if args.autoencoder:
+            snarky.autoencoder(num_units=256)
+        else:
+            snarky.create_model(num_units=512)
 
         if weights is not None:
             snarky.load(weights)
 
         snarky.summary()
-        snarky.train()
-
+        snarky.plot_model()
+        # snarky.train()
 
         if source_melody is not None:
             # Load a song for generation input
             pre = Preprocessor("./", params, time_step=args.time_step)
             song = pre.preprocess(source_melody)
-            encoded_song = loader.encode_song(song.get_song(bars=args.bars))
+            encoded_song = loader.encode_song(song.get_song(bars=args.bars, upbeat=args.upbeat))
             generated = snarky.generate(encoded_song, num_predictions=num_predictions)
+            loader.save_song(generated, dest_path)
+            print(generated)
 
 
-        loader.save_song(generated, dest_path)
-        print(generated)
 
 

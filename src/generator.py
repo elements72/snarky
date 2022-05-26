@@ -45,6 +45,7 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
 
 
     for weights in glob.glob(f"{weights}*.index"):
+        autoencoder = "A" in weights
         save_path = dest_path
         weights = pathlib.PurePath(weights)
         num_units = re.findall('[0-9]+', weights.name)
@@ -53,11 +54,14 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
         else:
             num_units = int(num_units[0])
         print(f"Processing dir: {dir}, with num_units: {num_units}")
-        name = f"{dest}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{num_units}"
+        name = f"{dest}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{'A_' if autoencoder else ''}{num_units}"
         save_path = f"{save_path}_{time}{'B' if bars else ''}_{num_units}"
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-        snarky.create_model(num_units=num_units)
+        if autoencoder:
+            snarky.autoencoder(num_units=num_units)
+        else:
+            snarky.create_model(num_units=num_units)
 
         # Load a song for generation input
         pre = Preprocessor("./", params, time_step=time_step)
@@ -79,6 +83,8 @@ if __name__ == "__main__":
     args = initialize_arguments()
     path = args.path
     for dir in os.listdir(path):
+        if dir != 'dataSM8B':
+            continue
         if "B" in dir:
             bars = True
         else:

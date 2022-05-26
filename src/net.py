@@ -17,11 +17,11 @@ class Snarky:
     def __post_init__(self):
         self._buffer_size = self._batch_size - self._sequence_length
         self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True)
-                          .prefetch(tf.data.experimental.AUTOTUNE))
+                          .cache().prefetch(tf.data.experimental.AUTOTUNE))
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 
-    def summary(self, to="model.png"):
+    def plot_model(self, to="model.png"):
         tf.keras.utils.plot_model(
             self.model,
             to_file=to,
@@ -29,6 +29,9 @@ class Snarky:
             show_layer_names=True,
             show_layer_activations=True
         )
+
+    def summary(self):
+        self.model.summary()
 
     def create_autoencoder(self, line, num_feature: int, num_units=128):
         encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(line)
@@ -46,7 +49,7 @@ class Snarky:
         autoencoder_out = []
         for i, param in enumerate(self._params):
             num_feature = self._params[param]
-            line = tf.keras.Input((self._sequence_length, self._params[param]))
+            line = tf.keras.Input((self._sequence_length, self._params[param]), name=param)
             inputs.append(line)
             encoder = tf.keras.layers.LSTM(num_units, activation='relu', return_sequences=True)(line)
             encoder = tf.keras.layers.LSTM(int(num_units / 2), activation='relu', return_sequences=False)(encoder)
@@ -60,7 +63,7 @@ class Snarky:
         concat = tf.keras.layers.Concatenate()(autoencoder_out)
         x = tf.keras.layers.LSTM(num_units)(concat)
 
-        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x)
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=f"{key}_output", activation="softmax")(x)
                    for key in self._params}
 
         model = tf.keras.Model(inputs, outputs)
@@ -78,12 +81,12 @@ class Snarky:
         return self.model
 
     def create_model(self, lr=0.001, num_units=128):
-        inputs = [tf.keras.Input((self._sequence_length, self._params[param])) for param in self._params]
+        inputs = [tf.keras.Input((self._sequence_length, self._params[param]), name=param) for param in self._params]
         concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
 
         x = tf.keras.layers.LSTM(num_units)(concat)
 
-        outputs = {key: tf.keras.layers.Dense(self._params[key], name=key, activation="softmax")(x) for key in self._params}
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=f"{key}_output", activation="softmax")(x) for key in self._params}
 
         model = tf.keras.Model(inputs, outputs)
 
