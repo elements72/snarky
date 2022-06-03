@@ -75,7 +75,7 @@ class Loader:
         train_dataset = tf.data.Dataset.from_tensor_slices(train_dataset)
         return train_dataset
 
-    def create_sequences(self, datasets: list, seq_length: int) -> tf.data.Dataset:
+    def create_sequences(self, datasets: list, seq_length: int, latent=False) -> tf.data.Dataset:
         """Returns TF Dataset of sequence and label examples."""
         seq_length = seq_length + 1
 
@@ -107,6 +107,8 @@ class Loader:
             inputs = tuple(seqs[key][0] for key in seqs)
             labels = tuple(seqs[key][1] for key in seqs)
             labels = {key: labels[i] for i, key in enumerate(self._params)}
+            if latent:
+                inputs = (inputs, [1 for _ in range(128)])
             return inputs, labels
 
         dataset = tf.data.Dataset.zip((*sequences, ))

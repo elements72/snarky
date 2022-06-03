@@ -15,12 +15,15 @@ def initialize_arguments():
     parser.add_argument('path', metavar='path', type=str, help='the path of the data')
     parser.add_argument('-predictions', metavar='predictions', type=int, help='number of predictions', required=True)
     parser.add_argument('-source', metavar='source', type=str, help='source melody', required=True)
+    parser.add_argument('-save', help='save melody', action="store_true", required=False)
+    parser.add_argument('-show', help='save melody', action="store_true", required=False)
 
     return parser.parse_args()
 
 
 
-def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predictions=100, dest="generated", weights="model.params", num_units=128):
+def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predictions=100,
+             dest="generated", weights="model.params", num_units=128, save=False, show=True):
     batch_size = 64
     sequence_length = 32
     buffer_size = batch_size - sequence_length
@@ -55,7 +58,7 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
             num_units = int(num_units[0])
         print(f"Processing dir: {dir}, with num_units: {num_units}")
         name = f"{dest}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{'A_' if autoencoder else ''}{num_units}"
-        save_path = f"{save_path}_{time}{'B' if bars else ''}_{num_units}"
+        save_path = f"{save_path}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{'A_' if autoencoder else ''}{num_units}"
         # Create the model
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         if autoencoder:
@@ -75,7 +78,10 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
         # Decoder
         decoder = Decoder(time_step=time_step)
 
-        decoder.show_midi(path=save_path, name=name)
+        if show:
+            decoder.show_midi(path=save_path, name=name)
+        if save:
+            decoder.save_midi(dir, name, dest)
     return generated
 
 
@@ -83,8 +89,6 @@ if __name__ == "__main__":
     args = initialize_arguments()
     path = args.path
     for dir in os.listdir(path):
-        if dir != 'dataSM8B':
-            continue
         if "B" in dir:
             bars = True
         else:
@@ -100,6 +104,6 @@ if __name__ == "__main__":
             continue
         try:
             generate(os.path.join(path, dir), bars=bars, source_melody=args.source, num_predictions=args.predictions,
-                     time=time, weights="model.params", upbeat=upbeat)
+                     time=time, weights="model.params", upbeat=upbeat, save=args.save, show=args.show)
         except Exception as e:
             print(f"Failed to generate: {dir}, error: {e}")

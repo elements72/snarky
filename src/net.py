@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from dataclasses import dataclass, field
 import numpy as np
+from keras import backend as K
 
 
 @dataclass
@@ -80,6 +81,52 @@ class Snarky:
 
         return self.model
 
+
+    def vae(self, num_units=128, time_step=8, lr=0.001):
+        latent_d = 128
+        conductor_d = 128
+        inputs = [tf.keras.Input((self._sequence_length, self._params[param]), name=param) for param in self._params]
+        #z_constant = tf.zeros((self._ba,latent_d))
+        #z_constant = K.variable(z_constant)
+        #z = tf.keras.Input(latent_d, tensor=z_constant)
+        z = tf.keras.Input(latent_d)
+        concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
+        z0 = z[0]
+
+        # conductor
+        conductor_seq_len = self._sequence_length//time_step
+        print(self._batch_size, conductor_seq_len, z[0])
+        conductor = tf.keras.layers.LSTM(latent_d, stateful=False, return_sequences=True) \
+            (tf.zeros((self._batch_size, conductor_seq_len, 1)), initial_state=[z, z])
+
+        expanded_conductor = []
+        print(conductor)
+        # bar generator
+        for i in range(0, conductor_seq_len):
+            tmp = tf.keras.layers.RepeatVector(time_step)(conductor[:, i])
+            expanded_conductor.append(tmp)
+        concat_conductor = tf.keras.layers.Concatenate(axis=1)(expanded_conductor)
+        print("Concat conductor: ", concat_conductor)
+        lstm_input = tf.keras.layers.Concatenate(axis=-1)([concat_conductor, concat])
+
+        x = tf.keras.layers.LSTM(num_units)(lstm_input)
+        outputs = {key: tf.keras.layers.Dense(self._params[key], name=f"{key}_output", activation="softmax")(x) for key
+                   in self._params}
+
+        model = tf.keras.Model([inputs, z], outputs)
+        loss = {key: tf.keras.losses.CategoricalCrossentropy() for key in self._params}
+        metrics = {key: tf.keras.metrics.CategoricalAccuracy() for key in self._params}
+
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+
+        model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
+
+        # model.summary()
+        self.model = model
+
+        return self.model
+
+
     def create_model(self, lr=0.001, num_units=128):
         inputs = [tf.keras.Input((self._sequence_length, self._params[param]), name=param) for param in self._params]
         concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
@@ -117,7 +164,10 @@ class Snarky:
         assert temperature > 0
         inputs = [tf.expand_dims(line, 0) for line in inputs]
         predictions = self.model.predict(inputs)
-        predicted = [int(tf.squeeze(tf.argmax(predictions[param], axis=-1), axis=-1)) for param in self._params]
+        # predicted = [int(tf.squeeze(tf.argmax(predictions[param], axis=-1), axis=-1)) for param in self._params]
+        print("Before")
+        predicted = [int(tf.squeeze(tf.random.categorical(predictions[param], num_samples=1), axis=-1)) for param in self._params]
+        print("After: ", predicted)
         return tuple(predicted)
 
     def save(self, path="model.params") -> None:

@@ -1,3 +1,4 @@
+import os.path
 import pathlib
 
 import music21 as m21
@@ -54,6 +55,18 @@ class Decoder:
             self.encode(fp, self.encode_chord)
             self.encode(fp, self.encode_note)
         self.stream.show()
+
+    def save_midi(self, path="generated", name="generated", source_melody="generated"):
+        dir = os.path.join(path, "midi")
+        self.stream.insert(0, m21.metadata.Metadata(title=name))
+        with open(os.path.join(path, name), "r") as fp:
+            self.encode(fp, self.encode_chord)
+            self.encode(fp, self.encode_note)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        if not os.path.exists(os.path.join(dir, source_melody)):
+            os.makedirs(os.path.join(dir, source_melody))
+        self.stream.write('mxl', fp=os.path.join(dir, source_melody, name + ".mxl"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Process songs dataset.')

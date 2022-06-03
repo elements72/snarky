@@ -42,7 +42,7 @@ if __name__ == "__main__":
         if args.upbeat:
             params.append("upbeat")
 
-        num_predictions = args.predictions if args.predictions else 400
+        num_predictions = args.predictions if args.predictions else 12
         num_predictions = int(num_predictions * (4 / args.time_step))
         dest_path = args.dest if args.dest else "./generated"
         weights = args.weights if args.weights else None
@@ -51,24 +51,26 @@ if __name__ == "__main__":
         # Load the dataset and create the sequence
         loader = Loader(os.path.join(path, "train"), _params=params)
         dataset = loader.load(categorical=True)
-        sequence = loader.create_sequences(dataset, sequence_length)
+        sequence = loader.create_sequences(dataset, sequence_length, latent=True)
         params = loader.get_params()
 
         # Create the modelinputs
         snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
-        if args.autoencoder:
+        """if args.autoencoder:
             snarky.autoencoder(num_units=256)
         else:
-            snarky.create_model(num_units=512)
+            snarky.create_model(num_units=256)
 
         if weights is not None:
-            snarky.load(weights)
+            snarky.load(weights)"""
 
+        snarky.vae()
         snarky.summary()
-        snarky.plot_model()
-        # snarky.train()
+        # snarky.plot_model()
+        snarky.train()
 
         if source_melody is not None:
+            print("Generating...")
             # Load a song for generation input
             pre = Preprocessor("./", params, time_step=args.time_step)
             song = pre.preprocess(source_melody)
