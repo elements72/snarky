@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 import argparse
 from chronometer import Chronometer
 from .Vocabulary import Vocab
-import json
 import tensorflow as tf
 import numpy as np
 
@@ -157,19 +156,17 @@ if __name__ == "__main__":
         parser.add_argument('path', metavar='path', type=str,
                             help='the path of the dataset')
         parser.add_argument('mapping_path', metavar='mapping_path', type=str,
-                            help='the path of the dataset')
+                            help='the path where write the vocabulary')
+        parser.add_argument('-bars', help='include bars', action="store_true")
         args = parser.parse_args()
         path = args.path
         params = ["chords", "chords_play", "melody", "melody_play"]
+        if args.bars:
+            params.append("bars")
         loader = Loader(path, _mapping_path=args.mapping_path, _params=params)
         dataset = loader.load()
         sequence = loader.create_sequences(dataset, 25)
-        for seq, target in sequence.take(1):
-            print('sequence shape:', seq.shape)
-            print('sequence elements (first 10):', seq[0: 10])
-            print()
-            print('target:', target)
-        print(loader.print_vocabulary())
+        loader.print_vocabulary()
 
         #print(f"""Len of chords: {len(dataset['chords'])}, len of chordsPlay: {len(dataset['chords_play'])},
         #len of melody: {len(dataset['melody'])}, len of melodyPlay: {len(dataset['melody_play'])}, """)

@@ -17,13 +17,14 @@ def initialize_arguments():
     parser.add_argument('-source', metavar='source', type=str, help='source melody', required=True)
     parser.add_argument('-save', help='save melody', action="store_true", required=False)
     parser.add_argument('-show', help='save melody', action="store_true", required=False)
+    parser.add_argument('-temperature', help='save melody', type=float, required=False)
 
     return parser.parse_args()
 
 
 
-def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predictions=100,
-             dest="generated", weights="model.params", num_units=128, save=False, show=True):
+def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predictions=100,\
+             dest="generated", weights="model.params", num_units=128, save=False, show=True, temperature=1.0):
     batch_size = 64
     sequence_length = 32
     buffer_size = batch_size - sequence_length
@@ -43,7 +44,6 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
     # Load the dataset and create the sequence
     loader = Loader(os.path.join(dir, "train"), _params=params)
     dataset = loader.load()
-    sequence = loader.create_sequences(dataset, sequence_length)
     params = loader.get_params()
 
 
@@ -56,28 +56,35 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
             num_units = 128
         else:
             num_units = int(num_units[0])
-        print(f"Processing dir: {dir}, with num_units: {num_units}")
+        print(f"Processing dir: {dir}, with num_units: {num_units}, weights: {weights}")
         name = f"{dest}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{'A_' if autoencoder else ''}{num_units}"
         save_path = f"{save_path}_{time}{'B' if bars else ''}_{'U_' if upbeat else ''}{'A_' if autoencoder else ''}{num_units}"
+        sequence = loader.create_sequences(dataset, sequence_length, latent=autoencoder)
         # Create the model
-        snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
         if autoencoder:
-            snarky.autoencoder(num_units=num_units)
+            snarky = Snarky(_sequence=sequence, _batch_size=1, _sequence_length=sequence_length, _params=params)
+            snarky.vae(num_units=num_units)
         else:
+            snarky = Snarky(_sequence=sequence, _batch_size=batch_size, _sequence_length=sequence_length, _params=params)
             snarky.create_model(num_units=num_units)
-
         # Load a song for generation input
         pre = Preprocessor("./", params, time_step=time_step)
         song = pre.preprocess(source_melody)
         encoded_song = loader.encode_song(song.get_song(bars=bars, upbeat=upbeat))
 
         snarky.load(os.path.splitext(weights.as_posix())[0])
-        generated = snarky.generate(encoded_song, num_predictions=num_predictions)
+        generated = snarky.generate(encoded_song, num_predictions=num_predictions, latent=autoencoder)
+        decoder = Decoder(time_step=time_step)
+        if temperature != 1.0:
+            generated_temp = snarky.generate(encoded_song, num_predictions=num_predictions, temperature=temperature)
+            loader.save_song(generated_temp, save_path + "_T")
+            if save:
+                decoder.save_midi(dir, name + "_T", dest)
+            if show:
+                decoder.show_midi(path=save_path + "_T", name=name+ "_T")
 
         loader.save_song(generated, save_path)
         # Decoder
-        decoder = Decoder(time_step=time_step)
-
         if show:
             decoder.show_midi(path=save_path, name=name)
         if save:
@@ -88,6 +95,7 @@ def generate(dir, source_melody, bars=False, upbeat=False, time=32 ,num_predicti
 if __name__ == "__main__":
     args = initialize_arguments()
     path = args.path
+    temperature = args.temperature if args.temperature else 1.0
     for dir in os.listdir(path):
         if "B" in dir:
             bars = True
@@ -103,7 +111,8 @@ if __name__ == "__main__":
         else:
             continue
         try:
-            generate(os.path.join(path, dir), bars=bars, source_melody=args.source, num_predictions=args.predictions,
-                     time=time, weights="model.params", upbeat=upbeat, save=args.save, show=args.show)
+            generate(os.path.join(path, dir), source_melody=args.source, bars=bars, upbeat=upbeat, time=time,
+                     num_predictions=args.predictions, weights="model.params", save=args.save, show=args.show,
+                     temperature=temperature)
         except Exception as e:
             print(f"Failed to generate: {dir}, error: {e}")

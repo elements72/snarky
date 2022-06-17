@@ -9,14 +9,17 @@ from keras import backend as K
 class Snarky:
     _sequence: tf.data.Dataset
     _batch_size: int = 64
-    _sequence_length: int = 25
+    _sequence_length: int = 32
     _params: dict = field(default_factory= lambda: {"chords": 1, "chords_play": 2,
                                                     "melody": 128, "melody_play": 2})
     _buffer_size: int = field(init=False)
     model: tf.keras.Model = field(init=False, repr=False)
 
     def __post_init__(self):
-        self._buffer_size = self._batch_size - self._sequence_length
+        if self._batch_size > 1:
+            self._buffer_size = self._batch_size - self._sequence_length
+        else:
+            self._buffer_size = 1
         self._sequence = (self._sequence.shuffle(self._buffer_size).batch(self._batch_size, drop_remainder=True)
                           .prefetch(tf.data.experimental.AUTOTUNE))
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
@@ -28,7 +31,8 @@ class Snarky:
             to_file=to,
             show_shapes=True,
             show_layer_names=True,
-            show_layer_activations=True
+            show_layer_activations=True,
+            dpi=72
         )
 
     def summary(self):
@@ -83,33 +87,44 @@ class Snarky:
 
 
     def vae(self, num_units=128, time_step=8, lr=0.001):
+
+        class Conductor(tf.keras.layers.Layer):
+            def __init__(self, conductor_seq_len):
+                super(Conductor, self).__init__()
+                self.conductor_seq_len = conductor_seq_len
+            def call(self, conductor):
+                expanded_conductor = []
+                for i in range(0, self.conductor_seq_len):
+                    tmp = tf.keras.layers.RepeatVector(time_step, name=f"Repeat_{i}")(conductor[:, i])
+                    expanded_conductor.append(tmp)
+                return expanded_conductor
+
         latent_d = 128
         conductor_d = 128
         inputs = [tf.keras.Input((self._sequence_length, self._params[param]), name=param) for param in self._params]
         #z_constant = tf.zeros((self._ba,latent_d))
         #z_constant = K.variable(z_constant)
         #z = tf.keras.Input(latent_d, tensor=z_constant)
-        z = tf.keras.Input(latent_d)
-        concat = tf.keras.layers.Concatenate(axis=-1)(inputs)
-        z0 = z[0]
+        z = tf.keras.Input(latent_d, name="Latent space")
+        concat = tf.keras.layers.Concatenate(axis=-1, name="Concatenate_input")(inputs)
 
         # conductor
         conductor_seq_len = self._sequence_length//time_step
-        print(self._batch_size, conductor_seq_len, z[0])
-        conductor = tf.keras.layers.LSTM(latent_d, stateful=False, return_sequences=True) \
+        conductor = tf.keras.layers.LSTM(latent_d, stateful=False, return_sequences=True, name="Conductor") \
             (tf.zeros((self._batch_size, conductor_seq_len, 1)), initial_state=[z, z])
 
         expanded_conductor = []
-        print(conductor)
         # bar generator
-        for i in range(0, conductor_seq_len):
-            tmp = tf.keras.layers.RepeatVector(time_step)(conductor[:, i])
-            expanded_conductor.append(tmp)
-        concat_conductor = tf.keras.layers.Concatenate(axis=1)(expanded_conductor)
-        print("Concat conductor: ", concat_conductor)
-        lstm_input = tf.keras.layers.Concatenate(axis=-1)([concat_conductor, concat])
 
-        x = tf.keras.layers.LSTM(num_units)(lstm_input)
+        for i in range(0, conductor_seq_len):
+            tmp = tf.keras.layers.RepeatVector(time_step, name=f"Repeat_{i}")(conductor[:, i])
+            expanded_conductor.append(tmp)
+
+        # expanded_conductor = Conductor(conductor_seq_len)(conductor)
+        concat_conductor = tf.keras.layers.Concatenate(axis=1, name="Concat_conductor")(expanded_conductor)
+        lstm_input = tf.keras.layers.Concatenate(axis=-1, name="Concat_inputs_conductor")([concat_conductor, concat])
+
+        x = tf.keras.layers.LSTM(num_units, name="Main_LSTM")(lstm_input)
         outputs = {key: tf.keras.layers.Dense(self._params[key], name=f"{key}_output", activation="softmax")(x) for key
                    in self._params}
 
@@ -160,14 +175,16 @@ class Snarky:
     def evaluate(self, sequence: tf.data.Dataset):
         return self.model.evaluate(x=sequence, return_dict=True)
 
-    def predict_next_note(self, inputs: list, temperature: float = 1.0):
+    def predict_next_note(self, inputs: list, temperature: float = 1.0, latent=False):
         assert temperature > 0
+        if latent:
+            inputs.append(np.ones(shape=128))
         inputs = [tf.expand_dims(line, 0) for line in inputs]
         predictions = self.model.predict(inputs)
-        # predicted = [int(tf.squeeze(tf.argmax(predictions[param], axis=-1), axis=-1)) for param in self._params]
-        print("Before")
-        predicted = [int(tf.squeeze(tf.random.categorical(predictions[param], num_samples=1), axis=-1)) for param in self._params]
-        print("After: ", predicted)
+        if temperature == 1.0:
+            predicted = [int(tf.squeeze(tf.argmax(predictions[param], axis=-1), axis=-1)) for param in self._params]
+        else:
+            predicted = [int(tf.squeeze(tf.random.categorical(predictions[param] / temperature, num_samples=1), axis=-1)) for param in self._params]
         return tuple(predicted)
 
     def save(self, path="model.params") -> None:
@@ -185,11 +202,11 @@ class Snarky:
         """
         self.model.load_weights(path)
 
-    def generate(self, inputs, temperature: float = 1, num_predictions: int = 125):
+    def generate(self, inputs, temperature: float = 1, num_predictions: int = 125, latent=False):
         generated_notes = []
         inputs = [inputs[key][:self._sequence_length] for key in inputs]
         for i in range(num_predictions):
-            generated = self.predict_next_note(inputs, temperature)
+            generated = self.predict_next_note(inputs, temperature, latent)
             generated_notes.append(generated)
             # For each line delete and append the new the prediction
             inputs = [np.delete(line, 0, axis=0) for line in inputs]
